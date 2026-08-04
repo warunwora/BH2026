@@ -1,0 +1,150 @@
+/* Liquid/morphing press feedback for the primary CTAs, plus the hero's fluid scale.
+   Owned by the liquid-button track — app-wide micro-motion lives in micro-motion.css,
+   auth-flow motion in auth-motion.css, the homepage pasta in pasta-motion.css.
+
+   Two sections, both belonging to the hero CTA's track:
+     1. .lq-*   the LiquidButton primitive (src/components/LiquidButton.tsx)
+     2. .hero-* the hero's fluid type and spacing
+
+   Deliberately no design tokens are added here: a parallel track is building a fluid type
+   scale in index.css's @theme, and two independent scales under one name would collide.
+   These are local clamp() utilities instead. */
+
+/* =============================================================== 1. LiquidButton
+   The component writes transform / border-radius inline every frame; this file owns
+   everything that does not change per frame, and the resting appearance the component
+   hands back to when its springs settle.
+
+   Structure: the root paints nothing and never moves — it keeps the layout box, the hit
+   area, the focus ring and the accessible name, and staying still is what keeps it out of
+   the reveal group's transform transition in index.css. `.lq-shift` carries the pull,
+   `.lq-fill` is the only painted surface (so it can be stretched, skewed and re-cornered
+   without touching the text), and `.lq-label` sits above both. Everything but the label
+   is aria-hidden decoration. */
+.lq-btn {
+  position: relative;
+  isolation: isolate;
+  /* inline-flex so the control is only as wide as its label, as in Figma */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* the fill is inset:0, so the root's radius is what the focus ring follows and what
+     the component reads as the resting pill radius */
+  border-radius: 100px; /* Figma: rounded-[100px] on the hero CTA */
+  /* Dragging must not select the label or start a native image/link drag. */
+  user-select: none;
+  -webkit-user-drag: none;
+  -webkit-tap-highlight-color: transparent;
+  /* pan-y, not none: a horizontal drag is ours, a vertical one is still the page's
+     scroll, so a touch user is never trapped on the button. When the browser claims the
+     gesture it sends pointercancel and the shape springs home. */
+  touch-action: pan-y;
+}
+
+.lq-shift,
+.lq-fill {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  /* radius flows root → shift → fill, so the caller's rounded-* is the single source */
+  border-radius: inherit;
+  /* the shape leans, stretches and presses about its own centre */
+  transform-origin: center;
+  pointer-events: none;
+}
+
+.lq-label {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  /* the caller's gap applies to the label row, not to the fill */
+  gap: inherit;
+}
+
+/* Keyboard users get the same control, with a ring that clears the red fill. Offset 4
+   rather than 2 because the fill runs to the very edge of the box. */
+.lq-btn:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 4px;
+}
+
+/* Hover is a tint on the fill only, so the label never dims with it. Gated on a fine
+   pointer, since touch fires :hover on tap. Opacity is safe under reduced motion. */
+@media (hover: hover) and (pointer: fine) {
+  .lq-fill {
+    transition: opacity var(--mm-fast, 160ms) var(--mm-ease, ease);
+  }
+
+  .lq-btn:hover:not(:active) .lq-fill {
+    opacity: 0.92;
+  }
+}
+
+/* Reduced motion: the component already refuses to attach a drag or write a transform,
+   so this is only a guarantee — nothing inherited or left over can deform the control. */
+@media (prefers-reduced-motion: reduce) {
+  .lq-shift,
+  .lq-fill,
+  .lq-label {
+    transform: none !important;
+  }
+
+  .lq-fill {
+    border-radius: inherit !important;
+  }
+}
+
+/* ============================================================= 2. Hero fluid scale
+   The hero was transcribed from the 1440 Figma frame as hard px with a second hard px
+   value behind `lg:`, which gave it exactly two sizes and a jump at 1024. These clamps
+   interpolate linearly and clamp at both ends: above 1440 the 1200 column is fixed, so the
+   design's numbers are the ceiling.
+
+   The low anchor used to be an invented 375 floor, because Figma had no frame under 1440.
+   `1190:558` is that frame now, so the hero's ramps are solved through BOTH real anchors:
+
+     slope = (v1440 - v402) / 1038 as vw;  intercept = v402 - slope * 402
+
+   Each lands on its Figma value to 0.001px at 402 and at 1440 — so 1440 cannot move (it is
+   an anchor) and the phone is measured rather than chosen. The 402 values are read off the
+   frame as gaps between siblings, since the phone hero is three separate nodes rather than
+   one frame: the lockup `1190:672` starts at y151 and the Calendar `1190:589` starts at
+   y932 against a CTA `1190:670` ending at 641 — so 151 above and 291 below.
+
+   Ramps that are not part of the hero still carry the older 375-floor form; each comment
+   names which anchors it was solved through. */
+
+/* The hero's own box — both anchors real (402 and 1440). */
+.hero-pad {
+  padding-inline: clamp(16px, 4.238921vw - 1.0404624px, 60px); /* 16 → 60 (Figma px-15) */
+  padding-top: clamp(151px, 3.0828516vw + 138.6069364px, 183px); /* 151 → 183 */
+  /* the run-up to §01 — 291 on the phone is CTA bottom 641 → Calendar top 932 */
+  padding-bottom: clamp(291px, 8.477842vw + 256.9190751px, 379px);
+}
+
+/* The CTA, both anchors real. `1190:670` is 305x60: `px-32 py-16` around a 241x28 label at
+   20px/1.4, with **no arrow glyph**. The 1440 control is 40 left / 24 right precisely
+   because it has one, so dropping the glyph below `md` is what makes the padding
+   symmetrical again — the left ramp grows 32 → 40 and the right one *shrinks* 32 → 24.
+
+   `font-size` carries a `min()` in front of the ramp. Below 402 the line keeps rising while
+   the viewport falls away, and this control's width is its label's: a 320 phone gave a 300px
+   pill inside a 288px column. `4.9751vw` is exactly 20px at 402, so it is continuous there
+   and simply hands the label to the viewport underneath. */
+.hero-cta {
+  margin-top: clamp(32px, 0.5780347vw + 29.6763006px, 38px); /* 32 (549→581) → 38 */
+  font-size: min(4.9751244vw, clamp(20px, 0.3853565vw + 18.4508671px, 24px)); /* 20 → 24 */
+  line-height: 1.4;
+  padding-block: 16px; /* Figma py-4 on both frames — nothing to interpolate */
+  padding-left: clamp(28px, 0.7707129vw + 28.9017341px, 40px); /* 32 → 40 */
+  padding-right: clamp(24px, 35.0982659px - 0.7707129vw, 32px); /* 32 → 24 */
+  gap: clamp(12px, 0.7512vw + 9.183px, 20px); /* glyph is md+ only, so 1440-anchored */
+}
+
+/* The arrow's cell — Figma insets the glyph inside a 34px box rather than scaling it, so
+   the box is what scales and the inset stays a percentage. */
+.hero-cta-icon {
+  width: clamp(26px, 0.7512vw + 23.183px, 34px);
+  height: clamp(26px, 0.7512vw + 23.183px, 34px);
+}

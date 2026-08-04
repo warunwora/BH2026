@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BangMod Hackathon 2026</title>
+    <!--
+      The wordmark's own hand-drawn "B", knocked out of a brand-red tile (assets/logo-nav.png
+      is a 1600x360 lockup, so it cannot be a favicon as-is, and the mascot's outline art turns
+      to mush below 32px). .ico carries 16 and 32 as PNG payloads so a bare GET /favicon.ico —
+      which is what a browser asks for when nothing is declared, and the one 404 on the site —
+      answers 200 as well.
+    -->
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32" />
+    <link rel="icon" type="image/png" href="/favicon.png" sizes="256x256" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

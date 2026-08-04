@@ -1,0 +1,503 @@
+@import 'tailwindcss';
+@import './styles/auth-motion.css';
+@import './styles/micro-motion.css';
+@import './styles/pasta-motion.css';
+@import './styles/liquid.css';
+
+@theme {
+  --font-thai: 'Noto Sans Thai', sans-serif;
+  /*
+   * Figma sets a few controls (the Google sign-in button, some numerals) in Sukhumvit Set,
+   * an Apple system face with no webfont. Per the project's decision every face is
+   * Noto Sans Thai, so `display` is an alias rather than a second stack — keeping the token
+   * means the Figma-faithful call sites still read as "the display face".
+   */
+  --font-display: 'Noto Sans Thai', sans-serif;
+
+  /* Figma styles: Red / Yellow / Black / Gray 01 / Gray 02 */
+  --color-brand-red: #c0563e;
+  --color-brand-yellow: #d79a4e;
+  --color-brand-green: #94b45e;
+  --color-brand-cream: #ffeab4;
+  --color-ink: #282828;
+  --color-gray-1: #808080;
+  --color-gray-2: #8c8c8c;
+
+  /* card gradient stops */
+  --color-red-grad-from: #b44d36;
+  --color-red-grad-to: #cc684a;
+  --color-yellow-grad-from: #d79a4e;
+  --color-yellow-grad-to: #eca700;
+
+  /*
+   * Figma's shared card effect, radius 40. Do not "correct" this to 20px: Figma emits the
+   * same effect as `box-shadow: 0 0 40px` but as `filter: drop-shadow(0 0 20px)`, because a
+   * filter's blur argument is a standard deviation — half the box-shadow radius. This token
+   * is a box-shadow, so 40 is the matching value.
+   */
+  --shadow-soft: 0 0 40px rgb(0 0 0 / 0.05);
+}
+
+/* ==========================================================================
+   Fluid scale
+   ==========================================================================
+
+   Every size on this site was transcribed from the Figma 1440 frame as a hard px,
+   with a second hard px behind `lg:`. That gave the site exactly two sizes — a
+   "mobile" one and a "1440" one — with a jump at 1024 and nothing in between. Past
+   1440 the 1200 column stayed 1200, so a wide display showed a small block flanked
+   by big margins.
+
+   Everything below is driven by two ramps. Both are *lengths* that run 0px → 1px,
+   which is what lets a token be written as `calc(MIN + DELTA * var(--ramp))`:
+   a unitless number times a length is a length, so no per-token clamp() is needed
+   and every value is readable as "starts here, moves by this much".
+
+     --fl   375 → 1440.  Type, gutters, control sizes, gaps.
+     --flv  375 → 1024.  Section vertical padding only.
+
+   Why two. The Figma value must be reached at exactly 1440 and must not move above
+   it, because the page's decorations are painted on fixed 1440-wide canvases
+   (HomeBackground, AboutDecor, HallOfFameDecor) with every prop pinned in absolute
+   px. `--fl` therefore tops out at 1440 and freezes — content above 1440 keeps the
+   design's geometry rather than growing away from the art behind it.
+
+   Vertical is stricter still. Those same canvases pin their props at absolute *y*,
+   so shortening a section's tail slides the content off its decoration. From 1024
+   up the vertical rhythm is already at its Figma value today, and that is the band
+   where the canvases are visible — so `--flv` reaches the Figma value at 1024 and
+   holds. Below 1024 it ramps, which removes the old jump at the `lg` breakpoint
+   without moving anything the decorations are registered against. */
+:root {
+  --fl: clamp(0px, calc((100vw - 375px) / 1065), 1px);
+  --flv: clamp(0px, calc((100vw - 375px) / 649), 1px);
+
+  /*
+   * A third ramp for the decoration fields was tried here and REVERTED — leaving the note,
+   * because the reasoning that rejects it is not obvious and the idea will occur again.
+   *
+   * Several pads below are not rhythm: they are the empty field a decoration is painted
+   * into. `sec-calendar`'s 451.5 of bottom pad is the garlic-and-fork field, `sec-scope`'s
+   * 197 the tomatoes and pots, `sec-hall-hero`'s 286.6 the ring. While those canvases were
+   * `hidden lg:block` the pad below `lg` reserved space for art that was never drawn, which
+   * at 768 left 343px of blank white between the last timeline card and the "02" heading.
+   *
+   * The fix is not to close the field: it is to draw the art, which HomeBackground now does
+   * below `lg` by hanging each group at the FRACTION of the section Figma puts it at. That
+   * makes the field load-bearing at every width — closing it does not remove a hole, it
+   * moves the garlic and the cutlery on top of the timeline cards. So every pad here stays
+   * on `--flv`, and a section's proportions stay Figma's at every width.
+   */
+
+  /* Content gutter. 20 at 375 → 120 at 1440, where it meets the 1200 column that
+     `max-w-[1200px]` caps: 120 + 1200 + 120 = the 1440 frame exactly. The old
+     `px-4 lg:px-15` only ever reached 60, so between 1024 and 1440 the full-size
+     1440 typography sat in a column barely narrower than the viewport — which is
+     what made the proportions read as too big and too wide.
+
+     The low anchor is no longer chosen: `1190:558` insets its content by 24 (its sections
+     are 402 wide holding a 354 column), so both ends are Figma's and the ramp is solved
+     through both. The old line gave 22.54 at 402, i.e. a 356.94 column where the frame
+     says 354. 1440 is unchanged — it is an anchor. */
+  --fl-gutter: calc(21.5px + 98.5 * var(--fl));
+
+  /* The nav pill and the footer sit in Figma's wider 1320 column, inset 60. Same story:
+     the old `16 + 44` gave 17.1 at 402 where the phone frame insets section content by 24.
+     The nav is a genuine exception at 20 and inlines its own value rather than this token. */
+  --fl-gutter-wide: clamp(24px, 3.4682081vw + 10.0578035px, 60px);
+}
+
+/* The two content shells. The inner column keeps its own `max-w-*`, so the shell
+   only ever supplies the gutter and the cap is still visible at the call site. */
+@utility shell {
+  padding-inline: var(--fl-gutter);
+}
+
+@utility shell-wide {
+  padding-inline: var(--fl-gutter-wide);
+}
+
+/* -------------------------------------------------------------- type ladder
+   ONE ordered ladder for every marketing page, calibrated against the *registration
+   screens* rather than against Figma's 1440 marketing numbers. Those numbers are the
+   design, but they are drawn for a 1440 display and transcribing them literally left
+   the three main pages reading a full step louder than the wizard sitting next to
+   them — 48px section headings against the wizard's 40px page title, 24px body
+   against its 20px.
+
+   Measured live off /register and /register/team, which is the reference:
+
+     caption 16 → 16 · body 18 → 20 · section h2 24 → 28 · page h1 30 → 40
+
+   The eight ranks below land inside that envelope at both ends.
+
+   Ordering is structural, not coincidental. Every rank is `calc(MIN + DELTA * --fl)`
+   and MIN *and* DELTA both decrease strictly down the ladder, so the difference
+   between two neighbouring ranks is itself `a + b * --fl` with a > 0 and b > 0 —
+   positive for every value of the ramp. That is what makes the hierarchy hold at
+   360, 768, 1024 and 1440 alike, rather than only at the two ends where the old
+   overlapping pairs happened to be checked.
+
+     rank           375   1440   role
+     fl-display      28     40   the page's own h1 — one per page
+     fl-section      23     34   a numbered section's h2
+     fl-title        19     26   card heading
+     fl-title-sm     17     23   card sub-heading, FAQ question
+     fl-lead         16     21   section subtitle, intro and feature copy
+     fl-body         15     19   body copy, list items
+     fl-eyebrow      14   17.5   the "01 / 02 / 03" section marker
+     fl-caption      13     16   meta, units, footnotes
+
+   Display numerals sit deliberately OUTSIDE the ladder. A date set as the visual
+   subject of a card is a graphic rather than a heading, and Figma places them above
+   the section title on purpose (60 against 48); they keep that relationship. Their
+   floors are cut hard, though — 36px on a 390 phone was the single largest thing on
+   the page. */
+
+@utility fl-display {
+  font-size: calc(28px + 12 * var(--fl)); /* 28 → 40 */
+}
+
+/* Both anchors are Figma's: `1190:755` is a 28px/1.4 title on the phone frame, 34 at 1440.
+   The old 23 floor was chosen when there was no frame under 1440. */
+@utility fl-section {
+  font-size: calc(27.844px + 6.156 * var(--fl)); /* 28 @402 → 34 @1440 */
+}
+
+@utility fl-title {
+  font-size: calc(19px + 7 * var(--fl)); /* 19 → 26 */
+}
+
+@utility fl-title-sm {
+  font-size: calc(17px + 6 * var(--fl)); /* 17 → 23 */
+}
+
+@utility fl-lead {
+  font-size: calc(16px + 5 * var(--fl)); /* 16 → 21 */
+}
+
+@utility fl-body {
+  font-size: calc(15px + 4 * var(--fl)); /* 15 → 19 */
+}
+
+/* `1190:753` sets the phone marker at 20px/1.5 — LARGER than the phone's body copy, which
+   is the one place the ladder's strict ordering does not hold. That is the designer's call
+   on the phone frame, not a slip: the "01" is a graphic label there, the way the display
+   numerals below sit outside the ladder for the same reason. Above ~700 the ramp descends
+   back under `fl-body` and the ordering resumes. */
+@utility fl-eyebrow {
+  font-size: calc(20.065px - 2.565 * var(--fl)); /* 20 @402 → 17.5 @1440 */
+}
+
+@utility fl-caption {
+  font-size: calc(13px + 3 * var(--fl)); /* 13 → 16 */
+}
+
+/* Display numerals — see above. */
+@utility fl-num-lg {
+  font-size: calc(20px + 12 * var(--fl)); /* 20 → 32 */
+}
+
+@utility fl-num-xl {
+  font-size: calc(24px + 22 * var(--fl)); /* 24 → 46 */
+}
+
+/* The nav row and its CTA. These had no `lg:` pair at all — a flat 20px that only
+   ever rendered at 1024+, which left the tablet band carrying desktop-size chrome. */
+@utility fl-nav {
+  font-size: calc(16px + 4 * var(--fl)); /* 16 → 20 */
+}
+
+/* -------------------------------------------------------- the flat px ladder
+   The dashboard and the 404 were transcribed with no `lg:` pair at all — a single
+   hard px that rendered at full desktop size on a 375 phone. Each utility is named
+   for its Figma value and ramps up to it, so `text-[24px]` becomes `fl-24` and the
+   1440 render is byte-identical while every width below it steps down.
+
+   The five small ranks now carry a FLOOR, written as `max(floor, ramp)`. Ramping a 12px
+   Figma caption down to 11 and a 14px label down to 13 was the wrong direction: those two
+   ranks sit at the bottom of what is legible, and on /my-team they are the label above
+   every value in the form — so the screen made almost entirely of small type was the one
+   carrying the smallest type on the site.
+
+   `max()` and not a re-based `calc()` on purpose. The desktop footer is frozen from `lg`
+   up and it uses `fl-16` and `fl-18`, so a new MIN/DELTA pair would have had to reproduce
+   the old value at every width from 1024 to 1440, not just at 1440. `max(floor, old-ramp)`
+   is *exactly* the old ramp everywhere the old ramp is already above the floor — it can
+   only ever lift the narrow end. The crossover widths are 641 (fl-20), 730 (fl-18) and 907
+   (fl-16), all well below `lg`, so nothing at or above 1024 moves by so much as a
+   hundredth of a pixel. fl-14 and fl-12 cross over only at 1440, so in practice they hold
+   flat at their Figma value, which is what those two ranks want.
+
+   The ordering property survives trivially: `max` of two strictly ordered quantities is
+   strictly ordered, and both the floors (17 > 16 > 15 > 14 > 12) and the ramps they replace
+   were already strictly ordered at every width.
+
+     rank     375   1024   1440
+     fl-40     28   35.3     40
+     fl-24     20  22.44     24
+     fl-20     17  18.44     20
+     fl-18     16  16.83     18
+     fl-16     15  15.22     16
+     fl-14     14     14     14
+     fl-12     12     12     12                                                        */
+@utility fl-40 {
+  font-size: calc(28px + 12 * var(--fl)); /* 28 → 40 */
+}
+@utility fl-24 {
+  font-size: calc(20px + 4 * var(--fl)); /* 20 → 24 */
+}
+@utility fl-20 {
+  font-size: max(17px, calc(16px + 4 * var(--fl))); /* 17 → 20, crossover 641 */
+}
+@utility fl-18 {
+  font-size: max(16px, calc(15px + 3 * var(--fl))); /* 16 → 18, crossover 730 */
+}
+@utility fl-16 {
+  font-size: max(15px, calc(14px + 2 * var(--fl))); /* 15 → 16, crossover 907 */
+}
+@utility fl-14 {
+  font-size: max(14px, calc(13px + 1 * var(--fl))); /* Figma's own 14, held */
+}
+@utility fl-12 {
+  font-size: max(12px, calc(11px + 1 * var(--fl))); /* likewise 12 */
+}
+
+/* The dashboard's own column: Figma insets a 1240 content block by 100 in the 1440
+   frame, so this shell tops out at 100 rather than the marketing pages' 120. */
+@utility shell-dash {
+  padding-inline: calc(16px + 84 * var(--fl));
+}
+
+/* ------------------------------------------------------- section vertical pads
+   One class per section, all on `--flv`. Kept here rather than as arbitrary
+   Tailwind values because each is a two-number interpolation and the arithmetic is
+   worth reading in one place; the Figma value is the second number in each pair. */
+
+@utility sec-hall-hero {
+  padding-top: calc(160px + 126.6 * var(--flv)); /* → 286.6 */
+  padding-bottom: calc(80px + 69.6 * var(--flv)); /* → 149.6 */
+}
+
+@utility sec-hall-timeline {
+  padding-bottom: calc(64px - 64 * var(--flv)); /* → 0, the waves butt straight on */
+}
+
+/* The four homepage sections below now have both anchors from Figma. On the phone frame
+   `1190:558` the section top IS the header top — there is no vertical padding above a
+   heading — and the tail is much longer than the mobile pass had guessed: the calendar ends
+   at 1781 and Steps begins at 2253, so 472 of blank page carries the garlic and the cutlery.
+   With the old 96px tail those props landed behind the Steps heading instead of in open
+   air, which is the misalignment both decoration tracks reported. */
+
+@utility sec-calendar {
+  padding-top: max(0px, calc(-3.84px + 92.34 * var(--flv))); /* 0 → 88.5 */
+  padding-bottom: calc(472.89px - 21.39 * var(--flv)); /* 472 → 451.5, the garlic/fork field */
+}
+
+@utility sec-steps {
+  padding-top: calc(80px - 80 * var(--flv)); /* → 0, the run-up is the calendar's tail */
+  padding-bottom: calc(114.21px - 5.21 * var(--flv)); /* 114 → 109 exactly */
+}
+
+@utility sec-prizes {
+  /* 0 above on the phone (3924 is the header), 165.5 at 1440 */
+  padding-top: max(0px, calc(-7.17px + 172.67 * var(--flv)));
+  padding-bottom: calc(96px + 69.5 * var(--flv)); /* 96 → 165.5 */
+}
+
+@utility sec-scope {
+  padding-top: calc(160px + 59 * var(--flv)); /* → 219 */
+  padding-bottom: calc(80px + 117 * var(--flv)); /* → 197 */
+}
+
+@utility sec-codern {
+  padding-top: calc(80px - 70 * var(--flv)); /* → 10 */
+  padding-bottom: calc(80px + 34.3 * var(--flv)); /* → 114.3 */
+}
+
+@utility sec-faq {
+  padding-block: calc(80px + 44.705 * var(--flv)); /* → 124.705 */
+}
+
+/*
+ * The hall-of-fame closing band. Its art is pinned to the 1440 canvas like every other
+ * decoration, but unlike the others it is a full-bleed band with no copy in it, so past
+ * 1440 a fixed stage just leaves white down both sides — the red mass is a finite drawing
+ * and simply runs out. Here the stage grows with the viewport instead.
+ *
+ * `tan(atan2(a, b))` is the standard way to get a unitless ratio out of two lengths:
+ * calc() will not divide a length by a length, but atan2 takes two lengths and returns an
+ * angle, and tan turns that back into the plain number a/b. Floored at 1 so nothing at or
+ * below 1440 moves — that geometry is the design and was measured against it.
+ *
+ * The height has to track the scale or the band would keep its 906 while the art inside it
+ * grew past the clip. Below lg the two step values are unchanged.
+ */
+/*
+ * /my-team's decoration band. Same problem and same shape of answer as `.hof-band` below:
+ * the art is authored on the 1440 canvas, but this is a self-contained band pinned to the top
+ * of the page rather than props registered against section positions, so it can simply be
+ * scaled rather than hidden. `translate` and `scale` are the individual transform properties,
+ * not `transform` — the element needs both and the longhands compose in a fixed order
+ * (translate, then scale) without either one clobbering the other, which a single `transform`
+ * shorthand shared with a Tailwind utility could not do.
+ *
+ * `tan(atan2(a, b))` is the standard way to get a plain number out of two lengths, since
+ * calc() will not divide a length by a length. Capped at 1: past 1440 the band is already
+ * wider than the viewport.
+ */
+.team-decor-stage {
+  translate: -50% 0;
+  scale: min(1, tan(atan2(100vw, 1440px)));
+  transform-origin: top center;
+}
+
+.hof-band {
+  --hof-scale: 0.45;
+  height: calc(906px * var(--hof-scale));
+}
+
+.hof-stage {
+  transform: scale(var(--hof-scale));
+}
+
+@media (width >= 48rem) {
+  .hof-band {
+    --hof-scale: 0.7;
+  }
+}
+
+@media (width >= 64rem) {
+  .hof-band {
+    --hof-scale: max(1, tan(atan2(100vw, 1440px)));
+  }
+}
+
+html {
+  /*
+   * Decorations bleed past the viewport edge, so the document has to clip them — but
+   * `overflow-x: hidden` is the wrong primitive for that. `hidden` makes the element a
+   * scroll *container* whose overflow is merely not shown: the box is still scrollable
+   * programmatically and, on a touch device, by dragging. That is exactly the bug — the
+   * page could be panned sideways onto empty space in Chrome's device mode even though
+   * `window.scrollX` read 0 afterwards, because the pan snapped back.
+   *
+   * `overflow-x: clip` clips without creating a scroll container, so there is no
+   * scrollport to pan and `scrollWidth` collapses to `clientWidth`. `overflow-y` stays
+   * `visible` (clip is one of the two values allowed to pair with visible), so the
+   * document keeps being the vertical scroll container and `scroll-behavior` below,
+   * `position: sticky` and scroll anchoring all keep working.
+   */
+  overflow-x: clip;
+}
+
+/*
+ * Smooth scrolling, for the one navigation that wants it and no other.
+ *
+ * `html { scroll-behavior: smooth }` used to be unconditional, and it was quietly the most
+ * destructive line in the stylesheet. `<ScrollRestoration>` resets a new route to the top
+ * with `scrollTo(0, 0)`, and a *programmatic* scroll obeys `scroll-behavior` too — so
+ * clicking a nav link from the bottom of `/` (y 4704) committed `/guide` at y 4704 and then
+ * flew 4704px back up over about 1550ms. Measured: at t≈90ms all eight of `/guide`'s
+ * reveals were already above the fold, so `useReveal`'s "already scrolled past on mount"
+ * branch marked every one of them visible with no animation, and the page the user landed
+ * on could never animate again. `/hall-of-fame` lost 3 of 3 the same way, at t≈38ms.
+ *
+ * Two triggers, because in a client-side router the standard one is never true:
+ *
+ * - `:has(:target)` is the real fragment case — a direct load or reload of `/#calendar`, or
+ *   an in-page anchor. It is scoped to the *document*, so a plain route change (no
+ *   fragment, nothing targeted) gets an instant reset and keeps its reveals.
+ * - `[data-fragment-nav]` covers the app's own footer fragment links. React Router changes
+ *   the URL with `history.pushState`, and pushState deliberately does NOT re-run the
+ *   browser's scroll-to-fragment steps — so it never updates the document's target element
+ *   and `:target` matches nothing, measured `false` on `/#calendar` at y 1192. App.tsx
+ *   stamps the attribute from a router subscriber, which runs before React commits and so
+ *   before `<ScrollRestoration>` scrolls; the next navigation without a hash clears it.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  html:has(:target),
+  html[data-fragment-nav] {
+    scroll-behavior: smooth;
+  }
+}
+
+body {
+  font-family: var(--font-thai);
+  color: var(--color-ink);
+  background: #fff;
+  /*
+   * Noto Sans Thai is a variable font and Figma pins its width axis to 100 on every text
+   * node. Without this the browser picks its own default width and every Thai glyph comes
+   * out a hair narrower than the design, which compounds across a line.
+   */
+  font-variation-settings: 'wdth' 100;
+}
+
+/*
+ * Scroll reveal — driven by the useReveal hook, which adds `is-visible` once the
+ * element enters the viewport. Everything lives inside a reduced-motion guard, so
+ * when motion is not wanted the rules never apply and content renders visible.
+ * Only opacity and transform animate, both compositor-friendly.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  /*
+   * The transition list carries the INTERACTION properties as well as the reveal's own two.
+   * `transition` is a shorthand, and this rule (0-1-0) loads after micro-motion.css's
+   * `.mm-lift` / `.mm-press` (also 0-1-0), so for any hoverable that is itself a reveal or
+   * a reveal-group child — the three `/guide` scope cards, the two contact channels — this
+   * declaration REPLACED their transition list and their hover became instant. Restating
+   * the four longhands micro-motion.css animates is what lets one element be both a reveal
+   * and a pressable; the pairs are `translate`/`scale` (never `transform`, which the reveal
+   * itself owns) at micro-motion's own durations.
+   */
+  .reveal,
+  .reveal-group > * {
+    opacity: 0;
+    transform: translateY(24px);
+    transition:
+      opacity 600ms var(--mm-ease-out) var(--reveal-delay, 0ms),
+      transform 600ms var(--mm-ease-out) var(--reveal-delay, 0ms),
+      translate var(--mm-base) var(--mm-ease-out),
+      scale var(--mm-press) var(--mm-ease-out),
+      color var(--mm-fast) var(--mm-ease),
+      background-color var(--mm-fast) var(--mm-ease),
+      border-color var(--mm-fast) var(--mm-ease);
+  }
+
+  .reveal.is-visible,
+  .reveal-group.is-visible > * {
+    opacity: 1;
+    transform: none;
+  }
+
+  /*
+   * Children of a group cascade in; 70ms apart reads as one motion, not a queue.
+   *
+   * Published as a custom property rather than as `transition-delay`, which is a list
+   * matching `transition-property` and so delayed the hover lift on the scope cards by up
+   * to 140ms as well. `--reveal-delay` is spent only on the two reveal entries above.
+   * An element revealing on its own — see PastEventCard, ScopeSection, Prizes, Steps, where
+   * a group's children are taller than the viewport and cannot share one trigger — sets the
+   * same property inline, so the ladder survives being taken apart.
+   */
+  .reveal-group.is-visible > *:nth-child(2) {
+    --reveal-delay: 70ms;
+  }
+  .reveal-group.is-visible > *:nth-child(3) {
+    --reveal-delay: 140ms;
+  }
+  .reveal-group.is-visible > *:nth-child(4) {
+    --reveal-delay: 210ms;
+  }
+  .reveal-group.is-visible > *:nth-child(5) {
+    --reveal-delay: 280ms;
+  }
+  .reveal-group.is-visible > *:nth-child(6) {
+    --reveal-delay: 350ms;
+  }
+  .reveal-group.is-visible > *:nth-child(n + 7) {
+    --reveal-delay: 420ms;
+  }
+}
