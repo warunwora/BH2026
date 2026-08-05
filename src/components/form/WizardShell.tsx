@@ -50,7 +50,14 @@ export default function WizardShell({
   const activeCrumb = CRUMB_FOR_STEP[step - 1]
 
   return (
-    <div className="relative flex min-h-dvh flex-col bg-[#fefdfc]">
+    /*
+     * `overflow-clip`, not `overflow-hidden`: the backdrop's decorations bleed past the
+     * edge and something has to clip them, but `hidden` would make this root a scroll
+     * container that a touch drag can still pan sideways. `clip` creates no scrollport,
+     * and unlike a transform it does not become a containing block for the overlay's
+     * `fixed` scrim.
+     */
+    <div className="relative flex min-h-dvh flex-col overflow-clip bg-[#fefdfc]">
       <WizardBackdrop withTomatoes={withTomatoes} />
 
       <div

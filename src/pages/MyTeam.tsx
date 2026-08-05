@@ -134,7 +134,7 @@ export default function MyTeam() {
      * The two text regions take the 14px distance; the header, the tab bar and the status
      * column take the full 48.
      */
-    <div className="relative min-h-dvh overflow-hidden bg-[#fefdfc]" data-auth-entrance>
+    <div className="relative min-h-dvh overflow-clip bg-[#fefdfc]" data-auth-entrance>
       <TeamDecor />
 
       {/* Figma 708:2306 — the progressive blur band that fades the pasta out under the nav */}

@@ -99,6 +99,11 @@ containing block 80px wider than the screen — which lets the page be dragged o
 pushes any `fixed inset-x-0` element out of the screen's centre.
 
 So the clip lives **inside the document**, on each page root, as well as on `html`. The
+marketing roots take `overflow-x-clip`; the auth, wizard, dashboard and 404 roots take
+`overflow-clip`, because their backdrops bleed on every side and those roots are relied on to clip
+the vertical bleed too — `overflow-x-clip` alone would let a collage lengthen the page. All four
+carried `overflow-hidden` until 2026-08-05, which clipped identically and left every one of them
+pannable. The
 acceptance test is `innerWidth == clientWidth == scrollWidth` under real mobile emulation, not
 `window.scrollX` after a programmatic scroll — that reads 0 even when the page is pannable, and
 it hid this bug for two rounds.

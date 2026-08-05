@@ -22,7 +22,7 @@ export default function AuthPageShell({
   children: ReactNode
 }) {
   return (
-    <div className="relative flex min-h-dvh flex-col overflow-hidden bg-white">
+    <div className="relative flex min-h-dvh flex-col overflow-clip bg-white">
       <ColourBlockBackdrop muted={muted} />
 
       <div className="relative mx-auto flex w-full max-w-[900px] flex-1 flex-col px-4 pt-8 lg:px-0 lg:pt-15">

@@ -92,7 +92,7 @@ export default function NotFound() {
      * revisits that screen inside one session and a second assembly reads as a stutter;
      * nobody visits a 404 twice on purpose.
      */
-    <div className="relative min-h-dvh overflow-hidden bg-white" data-auth-entrance>
+    <div className="relative min-h-dvh overflow-clip bg-white" data-auth-entrance>
       {/*
        * Figma 708:1241 "Background Shape" — a 2660x2610 organic yellow blob, rotated and
        * flipped, that the frame clips. It is the only thing behind the white copy, so the

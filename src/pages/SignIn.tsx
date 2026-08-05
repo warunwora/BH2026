@@ -64,7 +64,7 @@ export default function SignIn() {
      */
     <div
       data-auth-entrance={entrance || undefined}
-      className="relative min-h-dvh overflow-hidden bg-white"
+      className="relative min-h-dvh overflow-clip bg-white"
     >
       <div className="flex min-h-dvh flex-col items-center gap-10 p-5 lg:flex-row lg:gap-20">
         <div className="flex w-full flex-1 flex-col items-start gap-10 lg:gap-15 lg:pl-20">
