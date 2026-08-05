@@ -45,6 +45,8 @@ type Napkin = {
   iw: number
   ih: number
   rot: number
+  /** which side of the 1440 frame this napkin bleeds off — see `EdgeNapkins` */
+  edge: 'left' | 'right'
 }
 
 /*
@@ -71,8 +73,8 @@ const NAPKIN_FILL = { left: '-113.3%', top: '-90.4%', width: '291.47%', height: 
  * of the 1440 frame. Pasta 4 (935:1328) has no fill at all.
  */
 const NAPKINS: Napkin[] = [
-  { x: 683.73, y: -522.67, w: 1528.462, h: 1468.876, iw: 1269.65, ih: 861.154, rot: 39.08 },
-  { x: -1046.1, y: 236.91, w: 1669.054, h: 1669.042, iw: 1406.45, ih: 953.94, rot: 45 },
+  { x: 683.73, y: -522.67, w: 1528.462, h: 1468.876, iw: 1269.65, ih: 861.154, rot: 39.08, edge: 'right' },
+  { x: -1046.1, y: 236.91, w: 1669.054, h: 1669.042, iw: 1406.45, ih: 953.94, rot: 45, edge: 'left' },
 ]
 
 /** A rotated prop: `w/h` is the box Figma reports, `uw/uh` the size before rotation. */
@@ -271,12 +273,28 @@ function Props({ items, x, y }: { items: Prop[]; x: number; y: number }) {
   )
 }
 
+/** The rotated, clipped square of cloth itself — shared by the `lg`-down and `lg`-up layouts. */
+function NapkinCloth({ n }: { n: Napkin }) {
+  return (
+    <div
+      className="relative shrink-0 overflow-hidden"
+      style={{ width: n.iw, height: n.ih, transform: `rotate(${n.rot}deg)` }}
+    >
+      <img src={PASTA} alt="" className="absolute max-w-none" style={NAPKIN_FILL} />
+    </div>
+  )
+}
+
 /**
  * The napkins, clipped to their own box rather than to the screen. Everything else on this
  * canvas is either a soft wash or a prop whose Figma box already ends inside the page, so it
  * can bleed past 1440 without showing anything Figma does not; the napkins are hard-edged
  * and 1500px wide, and past 1440 the clip is the only thing standing between the corner of
  * cloth Figma paints and the whole tablecloth.
+ *
+ * Below `lg` this is the whole story: the stage that hosts this (`Narrow`, further down) is
+ * a `.decor-stage` scaled by `--decor-fit`, so a canvas edge always lands on the viewport
+ * edge. From `lg` up it is not — see `EdgeNapkins`.
  */
 function Napkins() {
   return (
@@ -298,12 +316,36 @@ function Napkins() {
           }`}
           style={{ left: n.x, top: n.y, width: n.w, height: n.h }}
         >
-          <div
-            className="relative shrink-0 overflow-hidden"
-            style={{ width: n.iw, height: n.ih, transform: `rotate(${n.rot}deg)` }}
-          >
-            <img src={PASTA} alt="" className="absolute max-w-none" style={NAPKIN_FILL} />
-          </div>
+          <NapkinCloth n={n} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * `lg` and up, the napkins pin to the true edges of the *viewport* rather than to the 1440
+ * canvas. That canvas is centred inside the outer `w-screen` stage (see `Canvas`), so past
+ * 1440 it sits with a gap on either side; positioned as `left: n.x` inside it, both napkins
+ * would drift off that gap and stop short of the screen edge instead of bleeding off it. A
+ * napkin's `left`/`right` here is measured against the same `w-screen` box the canvas centres
+ * in, so `1440 - n.x - n.w` (the box's overrun past the canvas's own right edge) lands the
+ * cloth flush against the real edge at any width, exactly as it does at 1440 today.
+ */
+function EdgeNapkins() {
+  return (
+    <div className="absolute inset-0 hidden overflow-hidden lg:block">
+      {NAPKINS.map((n, i) => (
+        <div
+          key={i}
+          className="absolute flex items-center justify-center"
+          style={
+            n.edge === 'right'
+              ? { right: 1440 - n.x - n.w, top: n.y, width: n.w, height: n.h }
+              : { left: n.x, top: n.y, width: n.w, height: n.h }
+          }
+        >
+          <NapkinCloth n={n} />
         </div>
       ))}
     </div>
@@ -408,6 +450,7 @@ function Canvas({ narrow, children }: { narrow: ReactNode; children: ReactNode }
       className="decor-fit pointer-events-none absolute inset-0 left-1/2 -z-10 w-screen -translate-x-1/2 overflow-clip"
     >
       {narrow}
+      <EdgeNapkins />
       <div className="absolute top-0 left-1/2 h-full w-[1440px] -translate-x-1/2">
         <div className="hidden lg:block">{children}</div>
         <Wash />
@@ -474,10 +517,11 @@ function Narrow() {
 export function AboutDecor() {
   return (
     <Canvas narrow={<Narrow />}>
-      {/* Frame paint order, bottom-most first: pots, tomatoes, pasta, garlic, wash. */}
+      {/* Frame paint order, bottom-most first: pots, tomatoes, pasta (`EdgeNapkins`, painted
+          by `Canvas` itself from `lg` up since it pins to the viewport, not this canvas),
+          garlic, wash. */}
       <Props items={POTS} x={1031} y={4581} />
       <Props items={TOMATOES} x={-149.69} y={4515.094} />
-      <Napkins />
       {/*
        * "Vector Shape" (935:1125) — the #FFEAB4 field behind the FAQ, whose curved bottom
        * edge is what the contact section is drawn against and what the garlic heap rides.
