@@ -395,8 +395,18 @@ export default function MobileHomeBackground() {
   const tops = {
     rigatoni: fromBottom(hero, F.hero.bottom, RIGATONI_WINDOW.y0),
     circle2: fromTop(calendar, F.calendar.top, CIRCLE_2.y),
-    garlic: fromBottom(calendar, F.calendar.bottom, GARLIC_LEFT.y),
-    fork: fromBottom(calendar, F.calendar.bottom, FORK_RIGHT.y),
+    /*
+     * Anchored off `steps.top`, not `calendar.bottom`, even though the art hangs off the
+     * calendar's tail: `sec-calendar`'s bottom padding is sized to exactly the Figma gap
+     * (1781 to 2253, see index.css), so at any width the live calendar-bottom edge already
+     * IS the live steps-top edge — the two coincide by construction. Reading the offset off
+     * `F.calendar.bottom` (1781) double-counted that gap, since 1781 is Figma's un-padded
+     * frame edge, not the padded one this DOM produces — it placed both groups a further 472
+     * below where the padding already put them, deep enough into the steps section to sit
+     * under its heading and first card instead of above them.
+     */
+    garlic: fromTop(steps, F.steps.top, GARLIC_LEFT.y),
+    fork: fromTop(steps, F.steps.top, FORK_RIGHT.y),
     circle1: fromTop(steps, F.steps.top, CIRCLE_1.y),
     blob: prizes ? prizes.top + PRIZE_BLOB_DY : null,
   }
