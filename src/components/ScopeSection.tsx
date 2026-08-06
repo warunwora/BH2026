@@ -1,6 +1,22 @@
-import ScopeCardArt from './ScopeCardArt'
+import ScopeCardArt, { ramp } from './ScopeCardArt'
 import { SCOPE_CARDS, SCOPE_INTRO } from '../aboutData'
 import { useReveal } from '../hooks/useReveal'
+
+/**
+ * The band Figma reserves above the folder for the topic's doodles: 201 on the 1440 card
+ * (`708:516` puts the folder at y 201 of a 451-tall card) and 101 on the 402 one
+ * (`1190:999` puts it at y 101 of a 300-tall card). It was a hard 201, which on the phone
+ * was two thirds of the whole card.
+ */
+const BAND = ramp(101, 201)
+
+/**
+ * The folder panel's floor. Figma's folder is 250 tall on the first two 1440 cards
+ * (`708:516` / `708:616`) and 248 on the third (`708:687`); all three are 199 on the phone
+ * frame (`1190:999` / `1190:1099` / `1190:1170`). Held as a MIN rather than a height so the
+ * panel still grows when the copy wraps to another line on a narrow card.
+ */
+const folderFloor = (h: number) => ramp(199, h)
 
 /**
  * One card, revealing itself.
@@ -27,7 +43,16 @@ function ScopeCard({ card, i }: { card: (typeof SCOPE_CARDS)[number]; i: number 
   return (
     <article
       ref={reveal.ref}
-      style={{ '--reveal-delay': `${i * 70}ms` } as React.CSSProperties}
+      style={
+        {
+          '--reveal-delay': `${i * 70}ms`,
+          '--scope-band': BAND,
+          /* The art stage inside ScopeCardArt is scaled by `100cqw` of this card — see the
+             header comment there. `inline-size` and not `size`: the card's own block size
+             is what the folder's copy decides. */
+          containerType: 'inline-size',
+        } as React.CSSProperties
+      }
       /* these carry a "go" arrow in their footer, so they read as reachable —
          the lift is what confirms it before anything is wired up
 
@@ -35,22 +60,34 @@ function ScopeCard({ card, i }: { card: (typeof SCOPE_CARDS)[number]; i: number 
          sat alone in the left half of a row with 430px of nothing beside it. It is
          given both columns and half their width instead, which centres it and turns
          the row into a deliberate 2-over-1 rather than an orphan. Three columns would
-         have been the other way out, but ScopeCardArt is pinned in absolute px
-         against Figma's 373-wide card, so a 198-wide card would show only the left
-         half of each doodle band — two-up at 768 is 315, which is close to the
-         width the art is drawn for. */
-      className={`mm-lift relative overflow-hidden rounded-2xl bg-white shadow-soft lg:h-[451px] ${
+         have been the other way out, but at 768 that is a 197-wide card — half the
+         width the folder's two lines of copy need — where two-up is 311. (The doodle
+         band no longer argues either way; it scales with the card. The copy still
+         does.) */
+      /* No `lg:h-[451px]` any more. 451 IS `201 + 250` — the band plus the folder — and
+         both of those now ramp, so the height follows them and still comes to 451 at 1440,
+         where each is at its Figma anchor and the copy (216 tall in a 333 measure) sits
+         inside the 250 floor. As a hard height it was the band that gave way: at 1024 the
+         card was still 451 with a 161 band, so the 373x250 folder silhouette was stretched
+         to 264x290 and the card read as a tall box rather than as a smaller copy of the
+         1440 one. Grid items stretch, so the three still share the tallest one's height
+         exactly as they did. */
+      /* `rounded-2xl` (16) is FLAT on purpose: read live 2026-08-06, `1190:974` and
+         `708:491` are both `rounded-[16px]`, so this is the one card radius on the site that
+         does not ramp. The folder panel below is 20 pad / 4 gap / 12 footer gap / 24 arrow on
+         both frames too (`1190:999` vs `708:516`), which is why none of those ramp either. */
+      className={`mm-lift relative overflow-hidden rounded-2xl bg-white shadow-soft ${
         i === SCOPE_CARDS.length - 1
           ? 'md:col-span-2 md:mx-auto md:w-[calc(50%_-_(12px_+_8*var(--fl)))] lg:col-span-1 lg:mx-0 lg:w-auto'
           : ''
       } ${reveal.cls}`}
     >
       <ScopeCardArt items={card.art} outlines={card.outlines} />
-      {/* Figma reserves 201 above the folder for the topic's doodle band */}
-      <div aria-hidden className="h-[201px]" />
+      {/* Figma reserves the doodle band above the folder — 201 at 1440, 101 at 402 */}
+      <div aria-hidden style={{ height: BAND }} />
       <div
         className="relative flex flex-col justify-between gap-6 p-5 text-white"
-        style={{ minHeight: card.folderHeight }}
+        style={{ minHeight: folderFloor(card.folderHeight) }}
       >
         {/* the folder silhouette carries the card's colour; stretched so the panel
             can still grow past 250 when the copy wraps on a narrow screen */}
@@ -60,18 +97,57 @@ function ScopeCard({ card, i }: { card: (typeof SCOPE_CARDS)[number]; i: number 
           aria-hidden
           className="absolute inset-0 size-full max-w-none"
         />
+        {/*
+         * These four sizes are solved through the PHONE frame's own values rather than left on
+         * their ladder ranks, which is a deliberate reversal the user asked for: the ranks in
+         * index.css are calibrated against the registration screens, and on this card they
+         * landed 25-38% away from what `1190:1002`-`1190:1006` draw at 402 — the widest gap
+         * anywhere on the site, and what made the phone cards read wrong.
+         *
+         *   rank          gave @402   Figma @402   kept @1440   node
+         *   fl-title-sm      17.43        24          23        1190:1002
+         *   fl-body          15.10        16          19        1190:1003
+         *   fl-title         19.18        24          26        1190:1005
+         *   fl-caption       13.08        18          16        1190:1006
+         *
+         * Two of the four therefore DESCEND (24 -> 23 and 18 -> 16), the same shape
+         * `fl-eyebrow` already carries and for the same reason: the designer's phone value is
+         * simply larger than the desktop-derived one. The 1440 column is each rank's own
+         * ceiling, i.e. exactly what rendered before this change — so desktop does not move by
+         * a pixel and only the narrow end is corrected.
+         */}
         <div className="relative flex flex-col gap-1">
-          <h3 className="fl-title-sm leading-[1.4] font-medium">{card.title}</h3>
-          <p className="fl-body leading-[1.4] font-light">{card.body}</p>
+          {/* 24 @402 (1190:1002) -> 23 @1440 */}
+          <h3 className="text-[calc(24.026px_-_1.026*var(--fl))] leading-[1.4] font-medium">
+            {card.title}
+          </h3>
+          {/* 16 @402 (1190:1003) -> 19 @1440 */}
+          <p className="text-[calc(15.922px_+_3.078*var(--fl))] leading-[1.4] font-light">
+            {card.body}
+          </p>
         </div>
         <p className="relative flex items-center gap-3">
-          <span className="fl-title leading-[1.4]">{card.count}</span>
-          <span className="fl-caption flex-1 leading-[1.4]">หัวข้อ</span>
+          {/* 24 @402 (1190:1005) -> 26 @1440 */}
+          <span className="text-[calc(23.948px_+_2.052*var(--fl))] leading-[1.4]">
+            {card.count}
+          </span>
+          {/* 18 @402 (1190:1006) -> 16 @1440 */}
+          <span className="flex-1 text-[calc(18.052px_-_2.052*var(--fl))] leading-[1.4]">
+            หัวข้อ
+          </span>
+          {/*
+           * `mm-nudge` — the glyph is `arrow_right_regular`, so it leans right by 4px while the
+           * card is hovered. It answers the CARD's hover, not its own: this card is an
+           * `<article>` carrying `mm-lift`, and every existing arrow utility keys off
+           * `:is(a, button):hover`, so the card rose under the pointer while the arrow that
+           * promises it is reachable sat still. The rule pairs with `.mm-lift` and is gated on a
+           * fine pointer, since touch fires :hover on tap — see micro-motion.css.
+           */}
           <img
             src="/assets/figma/7a9a840bc86f022af7d9842b56f91f168bd06a03.svg"
             alt=""
             aria-hidden
-            className="size-6"
+            className="mm-nudge size-6"
           />
         </p>
       </div>
@@ -89,35 +165,131 @@ export default function ScopeSection() {
 
   return (
     <section id="scope" className="shell sec-scope relative">
-      <div className="relative z-10 mx-auto flex max-w-[1200px] flex-col gap-10">
+      {/* Header-to-cards: Figma's Content Container sits at y 239 under a 199-tall header
+          block on the 1440 frame (`708:490`) and at y 231 under a header + CTA ending at 207
+          on the 402 one (`1190:973`) — 40 and 24. It was a flat `gap-10`.
+
+          Ramps derived by `ramp()` are set as inline styles, not as Tailwind arbitrary
+          values: the class scanner only sees literal source text, so a class name built from
+          a template literal would compile to nothing. */}
+      <div
+        className="relative z-10 mx-auto flex max-w-[1200px] flex-col"
+        style={{ gap: ramp(24, 40) }}
+      >
         <div ref={head.ref} className={`flex flex-col gap-[calc(12px_+_8*var(--fl))] ${head.cls}`}>
           <p className="fl-eyebrow leading-[1.5] font-medium text-brand-yellow">01</p>
-          {/* the pill is centred against the title + intro pair, not against the row's top */}
+          {/* the pill is centred against the title + intro pair, not against the row's top.
+              The pill goes beside the intro at `lg` and not at `md`: it is 317 wide at 1024
+              (it holds one unbreakable line), so at 768 the intro would be left with 335 of
+              the 652 column for a 30px heading and a 96-character paragraph — five lines in
+              half a row. Figma's own phone frame stacks them (`1190:969` sits under the
+              header block), and 1024 is the first width where 544 + 317 reads as the 1440
+              row's 875 + 325. */}
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:gap-0">
-            <div className="flex flex-col gap-[calc(8px_-_4*var(--fl))] lg:flex-1">
+            {/* Title-to-intro: `708:483` stacks its Title (h67) and Description (y71) 4 apart
+                at 1440, and `1190:965` stacks the same pair 12 apart on the phone (Title y42
+                h39, Description y93) — the phone header is a flat 3-child stack on a uniform
+                12. It was `8 - 4`, an invented narrow anchor. Lands on 4.000 at `--fl` = 1. */}
+            <div className="flex flex-col gap-[calc(12.208px_-_8.208*var(--fl))] lg:flex-1">
               <h2 className="fl-section leading-[1.4] font-semibold">ขอบเขตเนื้อหา</h2>
               <p className="fl-lead leading-[1.5] font-light">{SCOPE_INTRO}</p>
             </div>
             <a
               href="#"
-              className="mm-press flex shrink-0 items-center gap-[calc(12px_+_8*var(--fl))] self-start rounded-[100px] bg-brand-red py-[calc(12px_+_4*var(--fl))] pr-[calc(24px_+_12*var(--fl))] pl-[calc(16px_+_8*var(--fl))] text-white transition-opacity hover:opacity-90 lg:self-auto"
+              /* `rounded-[100px]` is Figma's on both frames (`1190:969`, and `708:486` is a
+                 325x60 pill), so it is flat rather than a ramp.
+                 `py` was `12 + 4`: `1190:969` sets `py-[10px]` (a 42-tall pill around a
+                 22-tall 16px line), not 12, while `708:486` is 60 tall around a 28-tall line
+                 = 16. The ramp below is 10.000 at 402 and exactly 16.000 at `--fl` = 1. */
+              /*
+               * Hover is a DARKENING plus a lift, never a fade.
+               *
+               * It was `transition-opacity hover:opacity-90`, and dimming is the wrong gesture
+               * for a filled control on a light page: reducing a red pill's alpha lets the cream
+               * band read through it, so the button appears to recede at the moment the pointer
+               * arrives. `#b14f39` is brand red at 92% luminance — the same value `.hero-cta`
+               * uses in liquid.css, so the site has one hover colour for its filled buttons.
+               *
+               * The 1px lift and the press below it are the pair: the pill rises to meet the
+               * pointer and drops under the click. `.mm-press` already times `background-color`
+               * at `--mm-fast` and owns `scale` for the press, so only the lift's own `translate`
+               * is declared here — and as `translate`, never `transform`, because `.mm-press`
+               * is animating `scale` on the same element and the shorthand would clobber it.
+               *
+               * `hover:hover and pointer:fine` gates the movement: on a touch screen `:hover`
+               * sticks after a tap, which would leave the pill lifted. The colour is left
+               * ungated and outside the motion guard — paint is the affordance this file keeps
+               * under `prefers-reduced-motion`, and movement is what it drops.
+               */
+              className="mm-press mm-pdf-cta flex shrink-0 items-center gap-[calc(12px_+_8*var(--fl))] self-start rounded-[100px] bg-brand-red py-[calc(9.844px_+_6.156*var(--fl))] pr-[calc(24px_+_12*var(--fl))] pl-[calc(16px_+_8*var(--fl))] text-white lg:self-auto"
             >
-              {/* a download arrow leans the way it points on hover */}
-              <span className="mm-arrow-down relative block size-[calc(26px_+_8*var(--fl))] shrink-0">
-                <img
-                  src="/assets/figma/115b31f82f018f10c7430912ba6f548f7d8eab15.svg"
-                  alt=""
-                  aria-hidden
-                  className="absolute inset-[12.54%_22.35%_14.08%_22.33%] max-w-none"
-                />
+              {/* a download arrow leans the way it points on hover.
+                  The glyph box was a flat-floored `26 + 8` — 26 at 375 against the 20 the
+                  phone frame gives it (`1190:970`, a 20x20 arrow in a 42-tall pill), which on
+                  a 375 screen was the widest thing in a pill that has to stay on one line.
+                  The 1440 end is left at the verified 34 rather than moved to Figma's 28
+                  (`708:487`), because desktop is the reference here. */}
+              <span
+                className="mm-arrow-down relative block shrink-0"
+                style={{ width: ramp(20, 34), height: ramp(20, 34) }}
+              >
+                {/* The inset is on this SPAN, not on the <img>, and that is the whole fix for
+                    the "icon too big" report. An `<img>` is a REPLACED element: absolutely
+                    positioned with all four insets set, `width: auto` resolves to the image's
+                    INTRINSIC width and the over-constrained `right` is discarded outright
+                    (CSS 2.1 §10.3.7). So the glyph painted at the asset's own
+                    18.8109 x 24.9493 at EVERY width — a 25-tall arrow inside a box the ramp
+                    had correctly narrowed to 20.03 at 402, standing beside a 16px label.
+                    `max-w-none` had also removed the preflight `max-width: 100%` that would
+                    otherwise have capped it, so nothing was left to bound it at all. A span is
+                    a non-replaced box, so the inset genuinely sizes it and `size-full` makes
+                    the image follow.
+
+                    The insets stay percentages rather than becoming a second ramp: 55.32% wide
+                    x 73.38% tall is the glyph's share of Figma's icon frame, and at the box's
+                    34 ceiling that is exactly 18.8088 x 24.9492 — the asset drawn 1:1. 1440 is
+                    therefore unmoved to within the 4th decimal (same top/left, same size), and
+                    402 finally gets the 11.08 x 14.70 glyph the 20-box implies. */}
+                <span className="absolute inset-[12.54%_22.35%_14.08%_22.33%] block">
+                  <img
+                    src="/assets/figma/115b31f82f018f10c7430912ba6f548f7d8eab15.svg"
+                    alt=""
+                    aria-hidden
+                    className="block size-full"
+                  />
+                </span>
               </span>
-              <span className="fl-body leading-[1.4] font-bold whitespace-nowrap">
+              {/* `fl-body` (15 → 19) was a rank short of the phone anchor: `1190:972` sets this
+                  label at 16px/1.4 (a 174x22 box), and 15.101 at 402 measured 163.4 — a 237
+                  pill where the frame draws 246. The ramp below is 16.000 at 402 and lands on
+                  19.000 at `--fl` = 1, i.e. exactly the `fl-body` ceiling the ladder had here,
+                  so the 1440 pill is unchanged (24 + 34 + 20 + 205.58 + 36 = 319.58 as before).
+                  It is spelled out rather than promoted to `fl-lead`, whose 21 ceiling would
+                  have moved desktop. Measured against the font: at 16/700 the label is 173.12,
+                  so the phone pill comes to 16.20 + 12.20 + 20.03 + 173.12 + 24.30 = 245.85
+                  against Figma's 246. Desktop's own 20px (`708:489`) is deliberately NOT the
+                  ceiling — the type ladder in index.css is calibrated against /register at
+                  1440 and owns that end. */}
+              <span className="leading-[1.4] font-bold whitespace-nowrap text-[calc(15.922px_+_3.078*var(--fl))]">
                 ดาวน์โหลดฉบับเต็ม (PDF)
               </span>
             </a>
           </div>
         </div>
 
+        {/*
+         * Column count, decided rather than inherited. Card widths, content = viewport −
+         * 2·`--fl-gutter` and gap = `24 + 16·--fl`:
+         *
+         *   375 one-up   332   ·   768 two-up  311   ·  1023 two-up  413
+         *  1024 three-up 264   ·  1180 three-up 305  ·  1440 three-up 373.33
+         *
+         * Three-up from `lg` keeps Figma's composition (`708:490` is a row of three) at every
+         * width that can hold it, and two-up spans 311–413 — i.e. it straddles the 373 the art
+         * is drawn for, which is why the 2-over-1 exists at all. The art no longer cares
+         * either way: ScopeCardArt scales by the card's own width, so 264 at 1024 is a 71%
+         * copy of the 1440 card rather than its middle third.
+         */}
         <div className="grid gap-[calc(24px_+_16*var(--fl))] md:grid-cols-2 lg:grid-cols-3">
           {SCOPE_CARDS.map((card, i) => (
             <ScopeCard key={card.title} card={card} i={i} />

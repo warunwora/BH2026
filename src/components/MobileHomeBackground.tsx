@@ -1,6 +1,6 @@
 /*
  * The homepage's decorations at phone width, transcribed from Figma's own 402-wide mobile
- * frame — "Homepage" (1190:558), 402 x 5109.
+ * frame — "Homepage" (1190:558), 402 x 5198.
  *
  * Until this file existed there was no spec under 1440, so the phone got an invented policy:
  * two hand-composed bands hung off the hero, with the 1440 groups shrunk to 100vw/1440. That
@@ -30,11 +30,14 @@
  *        375        5099              4766                     333 px
  *        402        5202              5109                      93 px
  *
+ * (Those are the readings of the day; the frame has since grown to 5198 and the 402 row's
+ * drift with it. The argument is about the SHAPE of the three rows, which is unchanged.)
+ *
  * A narrow page is not a short page — text reflows *taller* as the column narrows, so the
  * canvas shrinks while the content it belongs to grows. At 320 a scaled canvas would end
  * 1119px above the footer. Anchoring at 402 costs 41px of crop per side at 320 instead, and
  * every group in this frame already bleeds off an edge (the rigatoni run to x -225 and 560,
- * the garlic to -126, the closing waves to -122, the red blob to -486), so what a narrow
+ * the garlic to -126, the closing waves to -122, the red blob to -549), so what a narrow
  * phone crops is bleed the design never promised to show.
  *
  * THE RISK ACCEPTED, in two parts.
@@ -61,7 +64,7 @@
  * two readings are identical — but they have not all landed, and a page y is only meaningful
  * while every section above it is exactly Figma's height. An offset from a measured edge is
  * the same number and cannot drift. The offsets are transcribed, not chosen: `1190:751` is at
- * y -78 inside the prizes frame in Figma, so it is `prizesTop - 78` here.
+ * y -69 inside the prizes frame in Figma, so it is `prizesTop - 69` here.
  */
 
 import type { CSSProperties } from 'react'
@@ -87,13 +90,32 @@ import {
 /** The canvas Figma authors the phone against. Never scaled — see the note above. */
 const PHONE = 402
 
-/** Figma's own section boxes on this frame, the anchors every group below is stated against. */
+/**
+ * Figma's own section boxes on this frame, the anchors every group below is stated against.
+ *
+ * Re-read off the frame (2026-08-06) after the footnotes Figma added under the calendar grid
+ * and the prize cards (`1297:2057`, `1297:2061`) grew three of the four sections and moved
+ * everything under them, then re-verified against `get_metadata` on 1190:558 a second time in
+ * the same round: 1190:589 y 932 h 909, 1190:626 y 2253 h 1581, 1190:750 y 3924 h 649,
+ * 1190:831 y 4637 all still hold, as do GARLIC_LEFT 1852, FORK_RIGHT 1912, CHEESE 4529 and
+ * the prize blob's -549 / 1499x787 / -69. The old numbers are kept in the margin as the
+ * history of the pads in index.css, which are now solved through the new ones.
+ */
 const F = {
   hero: { top: 0, bottom: 932 }, // the calendar frame starts at 932
-  calendar: { top: 932, bottom: 1781 }, // 1190:589, y 932, h 849
-  steps: { top: 2253, bottom: 3810 }, // 1190:626, y 2253, h 1557
-  prizes: { top: 3924, bottom: 4489 }, // 1190:750, y 3924, h 565
-  footer: { top: 4655 }, // 1190:831, y 4655 — and the page wrapper's bottom edge
+  calendar: { top: 932, bottom: 1841 }, // 1190:589, y 932, h 909 (was h 849)
+  steps: { top: 2253, bottom: 3834 }, // 1190:626, y 2253, h 1581 (was h 1557)
+  prizes: { top: 3924, bottom: 4573 }, // 1190:750, y 3924, h 649 (was h 565)
+  /*
+   * Re-read 2026-08-07 off the live frame: `1190:831` is at y **4726**, not the 4637 this
+   * line carried, and the frame is 5198 tall rather than 5109. 4637 was the pre-footnote
+   * reading; the two footnotes Figma added (`1297:2057` under the calendar grid, `1297:2061`
+   * under the prize cards) grew the sections above it and pushed the footer down 89, and this
+   * one entry was not re-solved with the other four. It is the anchor for BOTH hung groups
+   * below, so the error was paid twice: the cheese pile sat 89 too deep under the footer and
+   * the strand fan 45 too deep (the fan carried its own stale y as well — see CLOSING_WAVES).
+   */
+  footer: { top: 4726 }, // 1190:831, y 4726 (was read 4637, and 4655 before that)
 }
 
 /*
@@ -227,7 +249,8 @@ const PHONE_PILE_X = 200
 /*
  * ------------------------------------------------------------------ "Garlic Left"
  *
- * 1190:657: ten bulbs on a yellow wave, hanging 126px off the left edge. The 1440 group at a
+ * 1190:657: ten bulbs on a yellow wave, hanging 126px off the left edge, at y 1852 (it was at
+ * 1802 before the calendar footnote pushed everything below the grid down). The 1440 group at a
  * uniform 0.4948 — every bulb's box and all ten rotations match the desktop rows in order —
  * so `garlic` and `yellowWave` are reused as they are. Wave 10 (1190:658) is the same vector
  * as the desktop's `yellowWave`: the two exports normalise to identical path coordinates, and
@@ -235,7 +258,7 @@ const PHONE_PILE_X = 200
  * group's 282x178 box reproduces the phone node exactly.
  */
 // prettier-ignore
-const GARLIC_LEFT: DecorNode = { x: -126, y: 1802, w: 329, h: 181, kids: [
+const GARLIC_LEFT: DecorNode = { x: -126, y: 1852, w: 329, h: 181, kids: [
   { x: 0.22,   y: 2.03,  w: 282,     h: 178,     src: yellowWave },  // 1190:658  Wave 10
   { x: 34.61,  y: 0.03,  w: 172.996, h: 180.01,  aw: 146.884, ah: 104.451, rotate: 51.71,  src: garlic },  // 1190:659
   { x: 118.78, y: 2.07,  w: 195.3,   h: 161.122, aw: 169.389, ah: 120.454, rotate: 15.4,   src: garlic },  // 1190:660
@@ -252,7 +275,8 @@ const GARLIC_LEFT: DecorNode = { x: -126, y: 1802, w: 329, h: 181, kids: [
 /*
  * --------------------------------------------------------- "Frame 1272631416", the cutlery
  *
- * 1190:784: two cutlery stars on a red wave, hanging 252px off the right edge. Unlike the
+ * 1190:784: two cutlery stars on a red wave, hanging 252px off the right edge, at y 1912 (it
+ * was at 1862 before the calendar footnote moved it). Unlike the
  * garlic this is NOT the desktop group rescaled — the two stars sit at 0.4508 and 0.6913 of
  * their desktop size inside a group at neither ratio, and several spoons and forks carry a
  * different reflection than their desktop counterparts, so all seventeen rows are transcribed
@@ -262,29 +286,53 @@ const GARLIC_LEFT: DecorNode = { x: -126, y: 1802, w: 329, h: 181, kids: [
  * path as `redWave` even though the two exports have different aspect ratios — the file is
  * `preserveAspectRatio="none"`, so the box decides the shape and the desktop export is exact
  * here. `spoon` and `fork` are the same two PNGs.
+ *
+ * ------------------------------------------ the sign of a MIRRORED piece's rotation (2026-08-06)
+ *
+ * The claim above that "several spoons and forks carry a different reflection than their
+ * desktop counterparts" was WRONG, and it was the cause of the "cutlery looks scattered"
+ * report: seven of these seventeen rows had the sign of their `rotate` inverted, which for a
+ * mirrored piece is not a small error but a ~90deg one, so every mirrored spoon pointed down a
+ * different spoke than Figma points it.
+ *
+ * The mechanism, because it will bite the next transcription too. `Node` emits Figma's own
+ * composition order — `transform: rotate(a) scaleY(-1)`, i.e. R(a)·S — and Figma's codegen
+ * states a mirrored node as `-scale-x-100 rotate-[b]`, which as Tailwind 4 CLASSES are the
+ * individual `rotate`/`scale` properties and compose in css-transforms-2's fixed order:
+ * rotate, then scale, i.e. R(b)·Sx. The two are the same drawing when
+ *
+ *     R(a)·Sy = R(a)·R(180)·Sx = R(a + 180)·Sx      so     b = a + 180,
+ *
+ * and since S·R(a) = R(−a)·S, writing the flip FIRST silently negates the angle. Figma's own
+ * b for these nodes is 180 − a, not 180 + a — one sign out. The corner-to-bbox solve that
+ * produced the x/y in these rows used Figma's true transform, so only the ANGLES were wrong
+ * and every position below is unchanged; each corrected row's angle is the one the desktop
+ * table in HomeBackground.tsx has carried all along for the same piece, which is the check
+ * that catches this: a group that is the desktop group re-laid-out must reuse its angles
+ * verbatim. Figma's own `rotate-[b]` value is quoted per row.
  */
 // prettier-ignore
-const FORK_RIGHT: DecorNode = { x: 188, y: 1862, w: 465.823, h: 469.012, kids: [
+const FORK_RIGHT: DecorNode = { x: 188, y: 1912, w: 465.823, h: 469.012, kids: [
   { x: 0, y: 0, w: 465.823, h: 469.012, aw: 342.069, ah: 324.431, rotate: -127.65, src: redWave },  // 1190:785  Wave 11
   { x: 97.96, y: 186.41, w: 208, h: 205, kids: [  // 1190:786  Fork (the large star)
-    { x: 46.69, y: 0,     w: 117.864, h: 117.864, aw: 83.34, ah: 83.34, rotate: 45.32,  src: spoon },  // 1190:787  Spoon 1
-    { x: 46.37, y: 86.82, w: 117.875, h: 117.875, aw: 83.34, ah: 83.34, rotate: 45.32,  flipY: true, src: spoon },  // 1190:788  Spoon 3
-    { x: 0.91,  y: 43.89, w: 117.85,  h: 117.85,  aw: 83.34, ah: 83.34, rotate: -45.32, flipY: true, src: spoon },  // 1190:789  Spoon 5
-    { x: 89.31, y: 42.62, w: 117.875, h: 117.875, aw: 83.34, ah: 83.34, rotate: 135.32, flipY: true, src: spoon },  // 1190:790  Spoon 7
+    { x: 46.69, y: 0,     w: 117.864, h: 117.864, aw: 83.34, ah: 83.34, rotate:   45.32, src: spoon },  // 1190:787  Spoon 1  (rotate-[45.32])
+    { x: 46.37, y: 86.82, w: 117.875, h: 117.875, aw: 83.34, ah: 83.34, rotate:  -45.32, flipY: true, src: spoon },  // 1190:788  Spoon 3  (-scale-x-100 rotate-[134.68])
+    { x: 0.91,  y: 43.89, w: 117.85,  h: 117.85,  aw: 83.34, ah: 83.34, rotate:   44.68, flipY: true, src: spoon },  // 1190:789  Spoon 5  (-scale-x-100 rotate-[-135.32])
+    { x: 89.31, y: 42.62, w: 117.875, h: 117.875, aw: 83.34, ah: 83.34, rotate: -135.32, flipY: true, src: spoon },  // 1190:790  Spoon 7  (-scale-x-100 rotate-[44.68])
     { x: 46,    y: 42,    w: 68,      h: 68,      src: fork },  // 1190:791  Fork 1
     { x: 95,    y: 93,    w: 68,      h: 67,      rotate: 180, src: fork },  // 1190:792  Fork 3
     { x: 95,    y: 42,    w: 68,      h: 68,      flipX: true, src: fork },  // 1190:793  Fork 5
     { x: 46,    y: 93,    w: 68,      h: 67,      rotate: 180, flipX: true, src: fork },  // 1190:794  Fork 7
   ] },
   { x: 50.96, y: 74.41, w: 136, h: 134, kids: [  // 1190:795  Fork (the small star)
-    { x: 24.11, y: 0,     w: 77.223, h: 77.223, aw: 55.91, ah: 55.91, rotate: 32.57,   src: spoon },  // 1190:796  Spoon 2
-    { x: 36.87, y: 56.96, w: 77.027, h: 77.027, aw: 55.91, ah: 55.91, rotate: 58.08,   flipY: true, src: spoon },  // 1190:797  Spoon 4
-    { x: 0.76,  y: 35.59, w: 77.027, h: 77.027, aw: 55.91, ah: 55.91, rotate: -31.92,  flipY: true, src: spoon },  // 1190:798  Spoon 6
-    { x: 58.42, y: 21.67, w: 77.027, h: 77.027, aw: 55.91, ah: 55.91, rotate: 148.08,  flipY: true, src: spoon },  // 1190:799  Spoon 8
-    { x: 21.38, y: 26.64, w: 54.351, h: 54.351, aw: 45.44, ah: 45.44, rotate: -12.76,  src: fork },  // 1190:800  Fork 2
-    { x: 60.92, y: 52.38, w: 54.351, h: 54.351, aw: 45.44, ah: 45.44, rotate: 167.24,  src: fork },  // 1190:801  Fork 4
-    { x: 53.45, y: 19.38, w: 54.351, h: 54.351, aw: 45.44, ah: 45.44, rotate: -167.24, flipY: true, src: fork },  // 1190:802  Fork 6
-    { x: 28.86, y: 59.64, w: 54.351, h: 54.351, aw: 45.44, ah: 45.44, rotate: 12.76,   flipY: true, src: fork },  // 1190:803  Fork 8
+    { x: 24.11, y: 0,     w: 77.223, h: 77.223, aw: 55.91, ah: 55.91, rotate:   32.57, src: spoon },  // 1190:796  Spoon 2  (rotate-[32.57])
+    { x: 36.87, y: 56.96, w: 77.027, h: 77.027, aw: 55.91, ah: 55.91, rotate:  -58.08, flipY: true, src: spoon },  // 1190:797  Spoon 4  (-scale-x-100 rotate-[121.92])
+    { x: 0.76,  y: 35.59, w: 77.027, h: 77.027, aw: 55.91, ah: 55.91, rotate:   31.92, flipY: true, src: spoon },  // 1190:798  Spoon 6  (-scale-x-100 rotate-[-148.08])
+    { x: 58.42, y: 21.67, w: 77.027, h: 77.027, aw: 55.91, ah: 55.91, rotate: -148.08, flipY: true, src: spoon },  // 1190:799  Spoon 8  (-scale-x-100 rotate-[31.92])
+    { x: 21.38, y: 26.64, w: 54.351, h: 54.351, aw: 45.44, ah: 45.44, rotate:  -12.76, src: fork },  // 1190:800  Fork 2  (rotate-[-12.76])
+    { x: 60.92, y: 52.38, w: 54.351, h: 54.351, aw: 45.44, ah: 45.44, rotate:  167.24, src: fork },  // 1190:801  Fork 4  (rotate-[167.24])
+    { x: 53.45, y: 19.38, w: 54.351, h: 54.351, aw: 45.44, ah: 45.44, rotate:  167.24, flipY: true, src: fork },  // 1190:802  Fork 6  (-scale-x-100 rotate-[-12.76])
+    { x: 28.86, y: 59.64, w: 54.351, h: 54.351, aw: 45.44, ah: 45.44, rotate:  -12.76, flipY: true, src: fork },  // 1190:803  Fork 8  (-scale-x-100 rotate-[167.24])
   ] },
 ] }
 
@@ -304,6 +352,15 @@ const FORK_RIGHT: DecorNode = { x: 188, y: 1862, w: 465.823, h: 469.012, kids: [
  * node on this frame. The desktop's `wash10` row is the same node read the same way, and the
  * export agrees: the tint in this band has no interior peak and leans very slightly right,
  * which is a blob centred 340px off the right edge and not one centred inside the frame.
+ *
+ * FLAGGED 2026-08-07, deliberately NOT changed: the REST API disagrees. `1190:564`'s
+ * `absoluteBoundingBox` is (15586, 1936) against a frame origin of (15709, 635), i.e. x =
+ * **-123**, and the desktop twin `708:53` reports x = -397 against the 728 that row carries —
+ * both off by exactly one box width, which is the signature of a transform-corner reading
+ * rather than a coincidence. Every other node in this file is transcribed from the REST box.
+ * It is left alone because the evidence is not decisive: this is a 10%-alpha fill under an
+ * 800px blur, the render sampled at 0.5 scale is within 2/255 of white on both edges, and the
+ * two files at least agree with each other. Whoever settles it must move BOTH rows together.
  */
 // prettier-ignore
 const CIRCLE_1: DecorNode = { x: 87, y: 2841, w: 849, h: 828, spread: 800, src: wash15Phone } // 1190:563
@@ -313,51 +370,72 @@ const CIRCLE_2: DecorNode = { x: 454, y: 1301, w: 577, h: 591, aw: 591, ah: 577,
 /*
  * ------------------------------------------------------------- the prize band's blob
  *
- * 1190:751 "Vector Shape", the red field behind the prizes section, drawn 1373 across a 402
- * canvas — 486 off the left edge and 485 off the right, which is Figma stating that the band
- * is full-bleed. It lives inside the prizes frame at y -78, so its wavy top edge rises 78px
- * above the section and its bottom edge dips 78px below it. The vector normalises to the same
- * path as the desktop's `redBlob`, so the art is reused.
+ * 1190:751 "Vector Shape", the red field behind the prizes section, drawn 1499 across a 402
+ * canvas — 549 off the left edge and 548 off the right, which is Figma stating that the band
+ * is full-bleed. It lives inside the prizes frame at y -69, so its wavy top edge rises 69px
+ * above the section. The vector normalises to the same path as the desktop's `redBlob` —
+ * 1499/787 = 1.9047 against the desktop node's 2213.647/1162.509 = 1.9042 — so the art is
+ * reused.
+ *
+ * Box and offset were both re-read on 2026-08-06: Figma had scaled the blob up 9.2% (it was
+ * 1373x721 at x -486) and moved it, at the same time as the footnote grew the section.
  */
 // prettier-ignore
-const PRIZE_BLOB: DecorNode = { x: -486, y: 0, w: 1373, h: 721, src: redBlob } // 1190:751
+const PRIZE_BLOB: DecorNode = { x: -549, y: 0, w: 1499, h: 787, src: redBlob } // 1190:751
 /** Figma's own offset of the blob inside 1190:750. */
-const PRIZE_BLOB_DY = -78
+const PRIZE_BLOB_DY = -69
 
 /*
  * ------------------------------------------------------------------ the closing band
  *
  * Waves 4-7 (1190:559-562) are four cream strand vectors fanned across the page's foot. All
- * four turn by the same 38.92deg and all four end on the same bottom edge, y 4865.06, which
+ * four turn by the same 38.92deg and all four end on the same bottom edge, y 4905.06, which
  * is what identifies the angle's sign: solved the other way they would land 250px higher with
  * four different bottoms and would not reach the left edge, which the export does.
  *
  * They are the one group on this frame with no desktop counterpart to borrow — the 1440 frame
  * merges its strands into a single `waveCluster` export — so the four vectors are committed
  * alongside. Coordinates below are relative to the group's own box.
+ *
+ * The group's x/y were 4392.935 and then 4432.935, both derived from `get_metadata`, whose
+ * `y` for a rotated node is the TRANSFORM corner and not the axis-aligned box. Every other
+ * group in this file (GARLIC_LEFT, FORK_RIGHT, CIRCLE_1, CHEESE, PRIZE_BLOB) is transcribed
+ * from the REST API's `absoluteBoundingBox`, which is the axis-aligned box `Node` actually
+ * wants — `nodeStyle` sets `left: n.x, top: n.y, width: n.w, height: n.h` and centres the art
+ * inside it — so this one group was the odd one out and sat 43.936 too high, which the hung
+ * offset below then paid again at the page's foot.
+ *
+ * Re-read 2026-08-07 straight off `/v1/files/.../nodes?ids=1190:559..562`, frame origin
+ * (15709, 635): Wave 5's box is (15587.2055, 5111.8711) 488.602x472.126, i.e. (-121.794,
+ * 4476.871) in the frame. The stated w/h check out against the rotation — for aw 396.851,
+ * ah 286.544 at 38.92deg, H = aw*sin+ah*cos = 472.27 and W = aw*cos+ah*sin = 488.76, both
+ * within the two-decimal residual of the angle — so the box really is the rotated one and
+ * needs no correction of any kind. The three sibling offsets are the same subtraction and
+ * shift by at most 0.2.
  */
 // prettier-ignore
-const CLOSING_WAVES: DecorNode = { x: -122.496, y: 4392.935, w: 488.602, h: 472.126, kids: [
+const CLOSING_WAVES: DecorNode = { x: -121.794, y: 4476.871, w: 488.602, h: 472.126, kids: [
   { x: 0,      y: 0,       w: 488.602, h: 472.126, aw: 396.851, ah: 286.544, rotate: 38.92, src: wave5 },  // 1190:560
-  { x: 22.302, y: 39.257,  w: 449.215, h: 432.87,  aw: 368.314, ah: 259.139, rotate: 38.92, src: wave6 },  // 1190:561
-  { x: 50.651, y: 85.13,   w: 402.377, h: 386.998, aw: 332.047, ah: 229.458, rotate: 38.92, src: wave7 },  // 1190:562
-  { x: 81.221, y: 131.064, w: 354.691, h: 341.06,  aw: 292.913, ah: 201.996, rotate: 38.92, src: wave4 },  // 1190:559
+  { x: 22.243, y: 39.254,  w: 449.215, h: 432.87,  aw: 368.314, ah: 259.139, rotate: 38.92, src: wave6 },  // 1190:561
+  { x: 50.522, y: 85.129,  w: 402.377, h: 386.998, aw: 332.047, ah: 229.458, rotate: 38.92, src: wave7 },  // 1190:562
+  { x: 81.024, y: 131.070, w: 354.691, h: 341.06,  aw: 292.913, ah: 201.996, rotate: 38.92, src: wave4 },  // 1190:559
 ] }
 
 /*
  * 1190:824 "Chesse": Wave 9 plus five chunks, the pile that closes the page beside the
  * footer's top corner. The chunks are the 1440 group at a uniform 0.5, in order, so
- * `cheeseChunk` is reused; Cheese 6 is the one that carries a different reflection than its
- * desktop row. Wave 9 is the same vector as `yellowWave`, like Wave 10 above.
+ * `cheeseChunk` is reused, Cheese 6 included — its "different reflection" was the same
+ * negated angle the cutlery carried (see the sign note on FORK_RIGHT). Wave 9 is the same
+ * vector as `yellowWave`, like Wave 10 above.
  */
 // prettier-ignore
-const CHEESE: DecorNode = { x: 218, y: 4489, w: 341, h: 239, kids: [
+const CHEESE: DecorNode = { x: 218, y: 4529, w: 341, h: 239, kids: [
   { x: 21.03, y: 36.14,  w: 319,     h: 202,     src: yellowWave },  // 1190:825  Wave 9
   { x: 58.035, y: -19.863, w: 258,   h: 184,     src: cheeseChunk },  // 1190:826
   { x: 1.034,  y: 29.137,  w: 211,   h: 150,     src: cheeseChunk },  // 1190:827
   { x: 41.55,  y: 50.93,   w: 215.901, h: 192.99,  aw: 178.03, ah: 126.58, rotate: 26.64,   src: cheeseChunk },  // 1190:828
   { x: 0.55,   y: 62.83,   w: 175.917, h: 157.249, aw: 145.05, ah: 103.15, rotate: 26.64,   src: cheeseChunk },  // 1190:829
-  { x: 17.32,  y: 92.52,   w: 158.533, h: 141.709, aw: 130.74, ah: 92.97,  rotate: -153.36, flipY: true, src: cheeseChunk },  // 1190:830
+  { x: 17.32,  y: 92.52,   w: 158.533, h: 141.709, aw: 130.74, ah: 92.97,  rotate: 153.36, flipY: true, src: cheeseChunk },  // 1190:830  (-scale-x-100 rotate-[-26.64])
 ] }
 
 /*
@@ -367,8 +445,8 @@ const CHEESE: DecorNode = { x: 218, y: 4489, w: 341, h: 239, kids: [
  * footer starts at every width, so these two offsets put both groups on the footer the way
  * Figma puts them there. Same reading the 1440 canvas gives "Home Buttom".
  */
-const CLOSING_WAVES_BOTTOM = F.footer.top - (CLOSING_WAVES.y + CLOSING_WAVES.h) // -210.061
-const CHEESE_BOTTOM = F.footer.top - (CHEESE.y + CHEESE.h) // -73
+const CLOSING_WAVES_BOTTOM = F.footer.top - (CLOSING_WAVES.y + CLOSING_WAVES.h) // -222.997
+const CHEESE_BOTTOM = F.footer.top - (CHEESE.y + CHEESE.h) // -42
 
 /** Per-piece flight and idle for the phone band: same derivation, distances at the 0.48 the
  *  art is drawn at, and the phone's own pile threshold. Keyed by node so a flight belongs to
@@ -397,13 +475,20 @@ export default function MobileHomeBackground() {
     circle2: fromTop(calendar, F.calendar.top, CIRCLE_2.y),
     /*
      * Anchored off `steps.top`, not `calendar.bottom`, even though the art hangs off the
-     * calendar's tail: `sec-calendar`'s bottom padding is sized to exactly the Figma gap
-     * (1781 to 2253, see index.css), so at any width the live calendar-bottom edge already
-     * IS the live steps-top edge — the two coincide by construction. Reading the offset off
-     * `F.calendar.bottom` (1781) double-counted that gap, since 1781 is Figma's un-padded
-     * frame edge, not the padded one this DOM produces — it placed both groups a further 472
-     * below where the padding already put them, deep enough into the steps section to sit
-     * under its heading and first card instead of above them.
+     * calendar's tail: `sec-calendar`'s bottom padding IS that gap (1841 to 2253 = 412 on the
+     * phone frame, see index.css), so at any width the live calendar-bottom edge already IS
+     * the live steps-top edge — the two coincide by construction, whatever the pad's value.
+     * Reading the offset off `F.calendar.bottom` would double-count the gap, since Figma's
+     * 1841 is the un-padded frame edge and not the padded one this DOM produces — it placed
+     * both groups a further 412 below where the padding already put them, deep enough into the
+     * steps section to sit under its heading and first card instead of above them.
+     *
+     * Re-checked 2026-08-06 against the pad as it now stands: `sec-calendar`'s
+     * `padding-bottom: calc(410.28px + 41.22 * var(--flv))` is 412.00 at 402 (`--flv` is
+     * 27/649 = 0.0416 there), so the live field IS Figma's 1841..2253 and these two offsets
+     * put the garlic 11 and the cutlery 71 below its top edge — the frame's own numbers,
+     * exactly. Nothing to correct here; the note is kept because the invariant is the pad's
+     * and a future change to it moves both groups.
      */
     garlic: fromTop(steps, F.steps.top, GARLIC_LEFT.y),
     fork: fromTop(steps, F.steps.top, FORK_RIGHT.y),
@@ -425,9 +510,9 @@ export default function MobileHomeBackground() {
 
   return (
     /*
-     * `inset-y-0` and not `h-[5109px]`: the coordinate space is Figma's 402 and is never
+     * `inset-y-0` and not `h-[5198px]`: the coordinate space is Figma's 402 and is never
      * scaled, but the canvas has to reach the footer so the closing band has a bottom edge to
-     * sit on. Stretching to the page wrapper gives it one at every width, which a fixed 5109
+     * sit on. Stretching to the page wrapper gives it one at every width, which a fixed 5198
      * could only be at 402 exactly.
      *
      * And deliberately NO `overflow-hidden`, which is worth a sentence because the Figma frame
@@ -464,9 +549,12 @@ export default function MobileHomeBackground() {
       {group(CIRCLE_1, tops.circle1)}
       {group(CIRCLE_2, tops.circle2)}
 
-      {/* "Top pasta" clips at its own 402x140 — see the note on TOP_PASTA */}
+      {/* "Top pasta" clips at its own 402x140 — see the note on TOP_PASTA. `overflow-clip`
+          and not `hidden`: the 23 tubes run to x -204 and 501 inside a 402 box, so under
+          `hidden` this crop is a scrollport a touch drag can pan 300px sideways — the same
+          bug the `html` note in index.css describes, one box further in. */}
       <div
-        className="absolute overflow-hidden"
+        className="absolute overflow-clip"
         style={{
           left: TOP_PASTA_CLIP.x,
           top: TOP_PASTA_CLIP.y,

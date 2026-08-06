@@ -2,7 +2,19 @@ import { Link } from 'react-router-dom'
 import AuthPageShell, { RESULT_ACTION, ResultCard } from '../../components/AuthPageShell'
 import { useAuthBackLink } from '../../components/form/wizardNav'
 
-/** Figma 708:2260 — the failure state desaturates the page's colour blocks to grey. */
+/**
+ * Figma 708:2260 at 1440, 1297:597 at 402 — the failure state desaturates the page's colour
+ * blocks to grey.
+ *
+ * Copy re-verified on both frames: title `708:2267` / `1297:616`, the single line
+ * `708:2268` / `1297:617`, the pill's label `708:2270` / `1297:621`. `text-brand-red` is
+ * Figma's own #c0563e on the title node, and only on the title — the description stays #282828.
+ *
+ * DELIBERATE divergence from the phone frame, which desktop wins: `1297:618` hangs a
+ * `group_3_light` mark (`1297:619`) in the ลองอีกครั้ง pill, where `708:2269` has the label and
+ * nothing else. The 402 frames are the older pass and this is one of their stale leftovers, so
+ * the pill stays label-only. Success is the screen that legitimately carries a glyph.
+ */
 export default function ErrorStep() {
   const authBack = useAuthBackLink()
 

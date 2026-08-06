@@ -8,8 +8,18 @@ import {
 } from '../../components/form/Field'
 import { PREFIX_OPTIONS } from '../../registrationData'
 
-/** Figma's field rows: a 24 gap, with the prefix select fixed at 100 wide. */
-const ROW = 'flex w-full flex-col items-start gap-6 lg:flex-row'
+/**
+ * Figma's field rows: a 24 gap, with the prefix select fixed at 100 wide.
+ *
+ * THREE shapes, not two. The row is Figma's own four-across from `lg` up, and one field per
+ * line on a phone, which is what `1297:1480` draws — but between those two there used to be
+ * nothing, so an iPad spent the whole 768 … 1023 band rendering the phone layout: twenty-odd
+ * full-width controls stacked down a 992-wide card, each one three times wider than its
+ * content needs, with the page four screens long. A 2-up grid at `md` is the same row Figma
+ * draws, folded once, and it costs no new decision — the cells are already `w-full`, so each
+ * one simply fills its track.
+ */
+const ROW = 'grid w-full grid-cols-1 gap-6 md:grid-cols-2 lg:flex lg:flex-row lg:items-start'
 const PREFIX = 'w-full lg:w-[100px] lg:shrink-0'
 const CELL = 'w-full lg:flex-1 lg:min-w-0'
 

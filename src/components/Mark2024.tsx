@@ -18,22 +18,33 @@ export default function Mark2024() {
         </div>
       </div>
       {/*
-       * No `size-full` on these: an absolutely positioned box is over-constrained if it has
-       * both insets and an explicit size, and the size wins — which stretched every layer to
-       * the full 300x242 instead of the slice Figma gives it. The insets alone are the box.
+       * Every layer is a SPAN carrying the inset with the image filling it — the shape the
+       * pill layer below has always used, now applied to all three.
+       *
+       * The note that used to sit here said "the insets alone are the box, so no `size-full`",
+       * and that is only true of a NON-replaced element. An `<img>` is replaced: with
+       * `width: auto` the used width is the image's INTRINSIC width and the over-constrained
+       * inset is discarded (CSS 2.1 §10.3.7), so four insets positioned these two layers
+       * without ever sizing them. The worry behind the old note was real but misplaced —
+       * putting `size-full` on the SAME element as the insets is what over-constrains it. On a
+       * wrapper, `size-full` resolves against the box the insets already defined, which is
+       * exactly the slice Figma gives the layer.
+       *
+       * Sixth and seventh occurrences of this in the codebase; see the ones on the contact
+       * glyphs, the calendar icon, the hero and scope arrows, and the contact pin.
        */}
-      <img src={LETTERING} alt="" className="absolute inset-[35.1%_0_22.32%_0] block max-w-none" />
+      <span className="absolute inset-[35.1%_0_22.32%_0] block">
+        <img src={LETTERING} alt="" className="block size-full max-w-none" />
+      </span>
       <div className="absolute inset-[69.03%_34.7%_20.12%_39.3%]">
         {/* the pill's stroke bleeds past the layer bounds */}
         <div className="absolute inset-[-0.89%_-0.3%]">
           <img src={PILL} alt="" className="block size-full max-w-none" />
         </div>
       </div>
-      <img
-        src={SPARKLE}
-        alt=""
-        className="absolute inset-[19.99%_67.14%_66.13%_20.35%] block max-w-none"
-      />
+      <span className="absolute inset-[19.99%_67.14%_66.13%_20.35%] block">
+        <img src={SPARKLE} alt="" className="block size-full max-w-none" />
+      </span>
       {/*
        * Figma's fifth layer is a 0.2847 x 48.375 white sliver — 0.09% of the mark's width.
        * Its export is degenerate enough that the browser reports no intrinsic width and

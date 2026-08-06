@@ -385,14 +385,27 @@ export default function AuthBackdrop() {
 
       {/* the pan is the nearest object in the collage, so it takes the most parallax */}
       <Plane depth={20}>
-        {/* the entrance and the 96s turn need one element each, as the shaker ring does */}
-        <div
-          className="auth-food-pan auth-rise absolute"
-          data-rise={3}
-          style={{ left: -125, top: -59, width: 654, height: 465 }}
-        >
-          <img src={PAN} alt="" className="auth-pan-turn size-full max-w-none object-cover" />
-        </div>
+        {/*
+         * The pan is STATIC. It used to carry `.auth-pan-turn` (styles/pasta-motion.css) —
+         * one revolution per `--turn-period`, about its bowl at 49.7%/59.1% rather than the
+         * box centre — and that is the rotation the design does not want here. The two rings
+         * that share the same `pan-turn` keyframe (`.hof-pan-ring`, `.nf-shrimp-ring`) keep
+         * theirs: dropping the class from this one element is what scopes it to sign-in.
+         *
+         * Which also collapses the two-element split. That existed only because the entrance
+         * and the turn both animate `transform` and would have fought over one element; with
+         * no turn left, `Block` — same box, same `auth-rise` + `data-rise`, same
+         * `auth-food-pan` view-transition name — is the whole thing.
+         */}
+        <Block
+          src={PAN}
+          className="auth-food-pan object-cover"
+          rise={3}
+          left={-125}
+          top={-59}
+          width={654}
+          height={465}
+        />
       </Plane>
 
       <Plane depth={10}>
@@ -405,6 +418,196 @@ export default function AuthBackdrop() {
           </div>
         </div>
       </Plane>
+    </div>
+  )
+}
+
+/* --------------------------------------------------- sign in, phone ------ */
+
+/**
+ * The SAME collage, re-composed for the 402 frame — Figma `1214:94`.
+ *
+ * Not a scaled copy of the desktop panel: the phone frame keeps every piece but lays them
+ * out around the copy instead of beside it, which is why each box below is transcribed
+ * rather than derived. Read off `1214:111` … `1214:126`, and the colour mapping is confirmed
+ * against the rendered frame — Figma's layer names are shuffled here the same way they are
+ * on the desktop panel (its "Background / Green" is the amber fill, "Red" the green one,
+ * "Orange" the red one), so the classes below follow the FILL, which is what the morph pairs
+ * on (`.auth-block-*` in styles/auth-motion.css).
+ *
+ * Two stages, one anchored to each edge, because that is what the frame means. The top group
+ * (both upright blocks, the pan, the three eggs) is measured from y0; the bottom group (the
+ * amber band and the shaker ring) sits 153 and 226 above the 874 frame's bottom edge, and a
+ * phone is never 874 tall — anchoring it to the document bottom is what keeps the band on the
+ * bottom edge at 667 and at 932 alike, where a single top-anchored stage would leave it
+ * stranded mid-screen or push it off.
+ *
+ * Both stages scale with the viewport off 402, capped at 430/402: 430 is the widest phone
+ * target, and past it the art holds its size rather than growing toward the `md` breakpoint
+ * where the desktop panel takes over. `translate` + `scale` as individual properties with a
+ * per-stage `transform-origin`, exactly as `.team-decor-stage` does in index.css — the
+ * shorthand would need one combined value and the two stages need different origins.
+ */
+const PHONE_STAGE = 'absolute left-1/2 h-[874px] w-[402px]'
+const PHONE_SCALE = 'min(1.07, tan(atan2(100vw, 402px)))'
+
+/**
+ * Figma sizes the phone EGGS at half the desktop panel's, to 3 decimals — all three of
+ * `1214:124`…`126` divide their desktop bbox by exactly this, on both axes. The pan does not:
+ * see its own note below. The shaker ring is a third factor again (347/694.626).
+ */
+const PHONE_FOOD_SCALE = 0.49809
+
+/** `1214:124` / `1214:125` / `1214:126` — the boxes only; w/h/rotate come from the desktop
+ *  set above, scaled, since the artwork and its rotation are the same drawing.
+ *
+ *  Re-read off the REST API 2026-08-07 and three of the six coordinates had drifted from
+ *  what was transcribed here: egg 1's top was 22.095 against Figma's −17, egg 2's 119.294
+ *  against 51.009, and egg 3's left 336.438 against 248.802 — which had that egg almost
+ *  entirely off the right edge of a 402 frame instead of clipped by it, and the first two
+ *  sitting below the green block they are supposed to be lying on. */
+const PHONE_EGG_BOXES: Box[] = [
+  { left: 180.605, top: -17, width: 271.731, height: 212.557 },
+  { left: 175.672, top: 51.009, width: 192.721, height: 170.801 },
+  { left: 248.802, top: -1.585, width: 244.905, height: 235.073 },
+]
+
+/**
+ * The three colour blocks, and this is the one place the phone set was transcribed on a
+ * different rule to the desktop one.
+ *
+ * Figma's `absoluteBoundingBox` for these VECTORs is LARGER than the path they draw — the
+ * node box carries the bezier control points that run past the artwork. Confirmed against
+ * `absoluteRenderBounds` at 1440: `708:1224` is a 525-tall box holding a 519.632 path flush
+ * to its BOTTOM, `708:1225` a 601-tall box holding 595.706 flush to its TOP, `708:1229` a
+ * 500-tall box holding 495.011 flush to its top. Each exported SVG is the path, so the
+ * desktop set above places the SVG at the path's box — which is why its numbers look 5px
+ * short of Figma's.
+ *
+ * The phone set was placing the same SVGs at the NODE box instead, so every one of them was
+ * stretched ~1% tall and the amber band's top edge — the only one of the three whose straight
+ * edge is on screen — sat 3.7px high. The scale factors below are the phone node box over the
+ * desktop node box (365/525, 417/601, 347/500), applied to the path.
+ *
+ * The corner radius does move: Figma sets 16 on the phone blocks and 20 at 1440, and a
+ * uniformly scaled 20 lands on 13.9. 2px of roundness on shapes that are 70% off-screen is
+ * not worth a second export of each; noted rather than fixed.
+ */
+const PHONE_BLOCKS = {
+  /** `1214:113` — box (−87, −165) 290x347, path top-flush. */
+  red: { left: -87, top: -165, width: 290, height: 343.538 },
+  /** `1214:112` — box (217, −165) 271x417, path top-flush. */
+  green: { left: 217, top: -165, width: 271, height: 413.327 },
+  /** `1214:111` — box (−67, 721) 656x365, path BOTTOM-flush, so its top gains 3.732. */
+  amber: { left: -67, top: 724.732, width: 656, height: 361.268 },
+}
+
+/**
+ * `1214:114` "Pepper" is 347 x 352.001 — exactly half of the desktop ring's 694.626 x
+ * 706.065 — so the ring itself is unchanged and only its box moves. The shakers keep the
+ * coordinates they have inside `SHAKER_RING`, on a stage scaled by that half, which is why
+ * `SIGN_IN_SHAKERS` is reused verbatim rather than re-transcribed at phone size.
+ *
+ * Three nested boxes and each one earns its place: the outer carries the view-transition
+ * name and the entrance, the middle carries the `scale` (an individual property), and
+ * `.auth-pepper-ring` inside carries the 96s turn on `transform`. Two of those on one
+ * element would fight.
+ */
+const PHONE_RING_SCALE = String(347 / 694.626)
+
+export function PhoneAuthBackdrop() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-clip md:hidden">
+      <div
+        className={`${PHONE_STAGE} top-0`}
+        style={{ translate: '-50% 0', scale: PHONE_SCALE, transformOrigin: 'top center' }}
+      >
+        {/* `1214:113` — the red block, top left, with the pan on it */}
+        <Block
+          src={`${F}239721762cc0b1a7e9b0ba787ef6c2010c4bc928.svg`}
+          className="auth-block-red"
+          rise={2}
+          {...PHONE_BLOCKS.red}
+        />
+        {/* `1214:112` — the green block, top right, under the eggs */}
+        <Block
+          src={`${F}81ab6df7b9ffc666c9e4e34fea15824767b81f3d.svg`}
+          className="auth-block-green"
+          rise={1}
+          {...PHONE_BLOCKS.green}
+        />
+        {/*
+         * `1214:123`. Unlike the 1440 panel's pan (`708:1230`, no rotation) the phone one is
+         * turned −9.16deg, so it takes `Piece` — Figma's rotated-bounding-box structure — where
+         * this used to be a plain `Block` drawing the artwork straight into that box. Two
+         * consequences, both visible: the pan sat level instead of tilted, and it was stretched
+         * to the bbox's 259.572x202.434 rather than drawn at its own 236x167 inside it.
+         *
+         * 236x167 is the unrotated size solved back out of the bbox (w·cos+h·sin = 259.572,
+         * w·sin+h·cos = 202.434 at 9.1586deg) — both land on an integer, which is the check.
+         * It is NOT the desktop pan's 654x465 at `PHONE_FOOD_SCALE`: 236/654 = 0.361, so Figma
+         * resized this one independently of the eggs.
+         *
+         * `top` was 39.846 against Figma's 2.283 — 37px down, which put the handle over the red
+         * block's lower edge instead of inside it.
+         *
+         * Still STATIC. The rotation here is Figma's fixed angle, not `.auth-pan-turn`.
+         */}
+        <Piece
+          src={PAN}
+          className="auth-food-pan"
+          rise={3}
+          left={-45.787}
+          top={2.283}
+          width={259.572}
+          height={202.434}
+          w={236}
+          h={167}
+          rotate={-9.1586}
+        />
+        {PHONE_EGG_BOXES.map((box, i) => (
+          <Piece
+            key={i}
+            src={EGG}
+            rise={4 + i}
+            className={`auth-food-egg-${i + 1}`}
+            w={SIGN_IN_EGGS[i].w * PHONE_FOOD_SCALE}
+            h={SIGN_IN_EGGS[i].h * PHONE_FOOD_SCALE}
+            rotate={SIGN_IN_EGGS[i].rotate}
+            {...box}
+          />
+        ))}
+      </div>
+
+      <div
+        className={`${PHONE_STAGE} bottom-0`}
+        style={{ translate: '-50% 0', scale: PHONE_SCALE, transformOrigin: 'bottom center' }}
+      >
+        {/* `1214:111` — the amber band. Its node box starts 153 above the 874 frame's bottom
+            edge; the path inside it is bottom-flush, so the drawn top is 149.268 above. */}
+        <Block
+          src={`${F}fa0b9f2f4fa7dcf077181151e86e3aecdf7a85a3.svg`}
+          className="auth-block-amber"
+          rise={0}
+          {...PHONE_BLOCKS.amber}
+        />
+        <div
+          className="auth-food-ring auth-rise absolute"
+          data-rise={7}
+          style={{ left: -126, top: 874 - 226, width: 347, height: 352.001 }}
+        >
+          <div
+            className="absolute top-0 left-0 h-[706.065px] w-[694.626px]"
+            style={{ scale: PHONE_RING_SCALE, transformOrigin: 'top left' }}
+          >
+            <div className="auth-pepper-ring absolute inset-0">
+              {SIGN_IN_SHAKERS.map((item, i) => (
+                <Piece key={i} {...item} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

@@ -27,7 +27,14 @@ export default function SectionHeader({
 }) {
   return (
     // Figma: number 36 tall, title 20 below it, description only 4 below the title.
-    <header className="flex w-full flex-col gap-[calc(12px_+_8*var(--fl))]">
+    /*
+     * `mm-header-lead` gives the number a 90ms head start on the title. Every other multi-part
+     * group in this repo staggers — the prize row, the step cards, the pasta — and this block
+     * was the one that arrived as a single flat slab, at all seven call sites at once. Reading
+     * order is number then title, so leading with the number is the stagger the eye already
+     * expects. The rule is in micro-motion.css, keyed off the caller's own `.reveal`.
+     */
+    <header className="mm-header-lead flex w-full flex-col gap-[calc(12px_+_8*var(--fl))]">
       <p
         className={`${NUMBER} leading-[1.5] font-medium ${light ? 'text-white' : 'text-brand-yellow'}`}
       >

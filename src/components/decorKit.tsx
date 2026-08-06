@@ -138,8 +138,12 @@ export function Node({ n, space = null, flow }: { n: DecorNode; space?: Space; f
     >
       {/* `relative` so a blurred export's bleed is measured from the art box, not the bbox */}
       <div className="relative shrink-0" style={art}>
+        {/* The crop box is `overflow-clip`, not `hidden`: the sprite window is 641-1136% of it,
+            so under `hidden` every single tube is its own touch-pannable scrollport. Legacy
+            engines fall back to `hidden` through index.css's `@supports not (overflow: clip)`
+            block, so nothing is left uncropped anywhere. */}
         {n.crop ? (
-          <div className="relative size-full overflow-hidden">
+          <div className="relative size-full overflow-clip">
             <img
               src={n.src}
               alt=""

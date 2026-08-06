@@ -381,12 +381,25 @@ export default function HomeBackground() {
        * hiding the cheese pile and the cream strands that are supposed to sit on top of it.
        * Inside the canvas, and before the band in DOM order, it is behind them instead.
        *
-       * It runs from the section's measured top to the canvas's own bottom, i.e. the footer.
+       * The ceiling is 1440, not `lg`. The blob's own box is 0.807 * 100vw tall — 827 at 1024,
+       * 1033 at 1280 — while the prizes section is ~1000 tall at 1024 and ~1030 at 1280,
+       * because `--flv` freezes at 1024 and the section is at its full Figma vertical rhythm
+       * from there up while the art is still at 71-89% scale. So the blob cannot cover the
+       * section anywhere below ~1430 and the fill is needed for the whole band, not just below
+       * `lg`; without it the white "03" and the white section title were drawn on white page.
+       * At 1440 the blob does cover it — the section top sits 39px above the blob's top edge
+       * and those 39px are empty padding — so the fill switches off there and the wavy top
+       * edge is visible exactly as it was verified.
+       *
+       * It runs the section's measured box and no further, which is what MobileHomeBackground's
+       * own copy of this fill does: the blob always ends 0.164 * 100vw BELOW the section's
+       * bottom edge (see the tail note in pages/Home.tsx), so the two overlap with no seam and
+       * the blob's wavy bottom edge still reads against the page rather than against flat red.
        */}
       {prizes && (
         <div
-          className="absolute inset-x-0 hidden bg-brand-red min-[431px]:block lg:hidden"
-          style={{ top: prizes.top, bottom: 0 }}
+          className="absolute inset-x-0 hidden bg-brand-red min-[431px]:block min-[1440px]:hidden"
+          style={{ top: prizes.top, height: prizes.height }}
         />
       )}
 
@@ -496,7 +509,22 @@ export default function HomeBackground() {
  *     the same crowd and puts it around the wordmark, which is where the design has it.
  *   - the scatter's window is Figma's own, y 707..1470, and it is hung by its *bottom*: the
  *     frame ends 278 below the hero's own bottom edge, i.e. 19.31% of the canvas past it, so
- *     `bottom: -19.31vw` reproduces the overhang exactly at any width.
+ *     `bottom: -19.31vw` reproduces the overhang exactly at any width. That IS the desktop
+ *     reading, stated fluidly, so it needs no second version below.
+ *
+ * The masthead crowd does need a second version, because the reading above is the PHONE's and
+ * this component runs to 1024. Hero.tsx switches the lockup itself from the 402 frame's
+ * stacked 311x232.6 arrangement (`1190:672`) to the 1440 frame's wide 810.5x421 one
+ * (`935:451`) at `md`, and the crowd has to switch with it:
+ *
+ *   - below `md` the lockup is the tall phone one and the reading above holds.
+ *   - from `md` the lockup is the wide desktop one, so the crowd's window is the desktop
+ *     canvas's own — page y 0 to 421.58, i.e. the crop the `lg` canvas gets from being
+ *     clipped at the page top — and the band hangs at y 0 like that canvas does. Measured at
+ *     1024 the phone reading put the crowd at page y 426..726 against a lockup at 170..487:
+ *     the pasta had slid out from behind the masthead entirely and was sitting on the
+ *     paragraph and the CTA. The desktop window puts it at 0..300, around the top of the
+ *     lockup, and reaches 56% down the lockup at 1439 exactly as it does at 1440.
  */
 export function HeroMobileDecor() {
   const { band, flowClass } = useFlowPhase()
@@ -506,12 +534,23 @@ export function HeroMobileDecor() {
       aria-hidden
       className="pointer-events-none absolute inset-0 -z-10 hidden min-[431px]:block lg:hidden"
     >
+      {/* 431..767 — the phone lockup's crowd. The nav pill is a fixed 92 tall (1190:779 is
+          402x92) at the narrow widths, so the crowd starts under it. */}
       <FluidGroup
         nodes={TOP_PASTA}
         y0={-470}
         y1={TOP_PASTA_WINDOW.y1}
-        /* the nav pill is a fixed 92 tall at the narrow widths; the crowd starts under it */
-        className="inset-x-0 top-[92px]"
+        className="inset-x-0 top-[92px] md:hidden"
+      />
+
+      {/* 768..1023 — the desktop lockup's crowd, in the desktop canvas's own window. Nodes
+          above y0 hang off the band's top and are cropped by its `overflow-clip`, which is
+          the same crop the px canvas gets from the page's top edge. */}
+      <FluidGroup
+        nodes={TOP_PASTA}
+        y0={0}
+        y1={TOP_PASTA_WINDOW.y1}
+        className="inset-x-0 top-0 hidden md:block"
       />
 
       {/* the flow's sentinel is the band's own box, which is one node rather than twenty */}
