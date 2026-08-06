@@ -174,6 +174,66 @@ const PAN_PLATE: Piece = {
   flipY: true,
 }
 
+/*
+ * ------------------------------------------------ the pan ring at phone width (1190:1495)
+ *
+ * Figma's 402-wide "Past Events" frame (1190:1468) draws this masthead's ring for itself, and
+ * it is NOT the 1440 ring at `--decor-fit`. Its "Pan" frame is 230.0009 x 215 at frame
+ * (250, -42) inside "Hero / Title & Description" (1190:1471, y 131), i.e. page (250, 89) —
+ * a ring 230 across, tucked against the right edge beside the title.
+ *
+ * What the 1440 stage was doing at 402 instead, which is the bug reported ("a grey pan ring
+ * behind the top-left of the nav, oversized and in the wrong place"): `w-[1754px]` scaled by
+ * 100vw/1440 = 0.279 is 489.4 wide, and `right: calc(-314px * fit)` puts its right edge at
+ * 402 + 87.6, so the frame spanned x 0.2..489.6 — the plate landed at 280..490 and the pans
+ * at 264..465, twice Figma's size and starting under the nav pill instead of beside the title.
+ *
+ * The nine pans are the desktop nine at a uniform 0.37716 (art 125.851 x 89.494 against the
+ * desktop 333.685 x 237.287; the plate is 284 x 179 against 749 x 474, 0.3792) in the same
+ * paint order with the same nine angles — 39.38, 78.77, 118.15, 157.9, -162.35, -122.59,
+ * -82.84, -43.09, -3.34 — so this is the same ring re-laid-out, not a second design. Figma's
+ * frame does NOT clip (its pans run x -7.5..271.5 and y -35..249.6 inside a 230x215 box and
+ * the render shows all of them); the page frame's own 402 edge is the only crop, which here is
+ * the page root's `overflow-x-clip`.
+ *
+ * Boxes are `get_design_context`'s, i.e. the bbox directly — not `get_metadata`'s rotated
+ * corner. Coordinates are relative to the 230.0009 x 215 frame.
+ */
+const PHONE_PAN_PLATE: Piece = {
+  src: WAVE_1,
+  left: 12.91,
+  top: 23,
+  w: 284,
+  h: 179,
+  cw: 284,
+  ch: 179,
+  flipY: true,
+} // 1190:1496  Wave 1
+// prettier-ignore
+const PHONE_PANS: Piece[] = [
+  { src: PAN, left:  -7.5,  top:  29.26, w: 154.057, h: 149.024, cw: 125.851, ch: 89.494, rotate:   39.38 },  // 1190:1497
+  { src: PAN, left:  30.17, top:  -8.18, w: 112.298, h: 140.875, cw: 125.851, ch: 89.494, rotate:   78.77 },  // 1190:1498
+  { src: PAN, left:  57.07, top: -35,    w: 138.281, h: 153.186, cw: 125.851, ch: 89.494, rotate:  118.15 },  // 1190:1499
+  { src: PAN, left:  95.93, top: -15.1,  w: 150.274, h: 130.266, cw: 125.851, ch: 89.494, rotate:  157.9  },  // 1190:1500
+  { src: PAN, left: 126.55, top:  23.54, w: 147.064, h: 123.445, cw: 125.851, ch: 89.494, rotate: -162.35 },  // 1190:1501
+  { src: PAN, left: 128.33, top:  53.78, w: 143.194, h: 154.24,  cw: 125.851, ch: 89.494, rotate: -122.59 },  // 1190:1502
+  { src: PAN, left: 118.35, top:  97.87, w: 104.478, h: 136.021, cw: 125.851, ch: 89.494, rotate:  -82.84 },  // 1190:1503
+  { src: PAN, left:  49.14, top:  98.27, w: 153.044, h: 151.331, cw: 125.851, ch: 89.494, rotate:  -43.09 },  // 1190:1504
+  { src: PAN, left:  20.51, top: 103.2,  w: 130.848, h:  96.67,  cw: 125.851, ch: 89.494, rotate:   -3.34 },  // 1190:1505
+]
+/**
+ * The ring's own centre, as a fraction of the 230.0009 x 215 frame — the mean of the nine
+ * bbox centres, exactly as `.hof-pan-ring`'s hand-solved `75.87% 33.82%` is the mean of the
+ * 1440 nine inside 1754 x 1115. It is 137.26 / 107.24 here. Set inline because the class
+ * carries the 1440 frame's figure and a stylesheet cannot know which frame it is on; an
+ * inline `transform-origin` outranks the class's without touching pasta-motion.css, and the
+ * class's `animation` and its `prefers-reduced-motion` opt-out still apply.
+ *
+ * (Same method verified against the desktop ring: its nine centres mean to 1330.82 / 377.15,
+ * which is the 75.87% / 33.82% already in the sheet.)
+ */
+const PHONE_RING_ORIGIN = '59.68% 49.88%'
+
 /**
  * Hero backdrop: the pan ring plus the two soft shapes that give the top of the page its
  * warmth — Figma's "Decoration / Circle" (a #D79A4E blob at 10% under a 400 blur) and the
@@ -215,7 +275,10 @@ export function HallOfFameHeroDecor() {
         }}
       >
         <div className="h-[366.451px] w-[493.487px] flex-none rotate-[7.24deg]">
-          <div className="relative size-full overflow-hidden">
+          {/* clip, not hidden: the fill is 641.92% wide and hangs off this box on both sides,
+              and `hidden` would make that a scrollport a touch drag can pan — see the `html`
+              note in index.css, which is the same bug one box further in. */}
+          <div className="relative size-full overflow-clip">
             <img
               src={PASTA}
               alt=""
@@ -226,11 +289,35 @@ export function HallOfFameHeroDecor() {
       </div>
 
       {/*
+       * The phone's own ring, from Figma's 402 frame — see the note on PHONE_PANS. A centred
+       * 402 canvas at 1:1, the same policy MobileHomeBackground.tsx uses, so the frame's x/y
+       * are used as they are and a narrower phone crops symmetrically. Ceiling 430, the same
+       * handover the homepage frame uses.
+       */}
+      <div className="absolute top-0 left-1/2 h-[304px] w-[402px] -translate-x-1/2 min-[431px]:hidden">
+        <div className="absolute" style={{ left: 250, top: 89, width: 230.0009, height: 215 }}>
+          <Layer p={PHONE_PAN_PLATE} />
+          <div
+            className="hof-pan-ring absolute inset-0"
+            style={{ transformOrigin: PHONE_RING_ORIGIN }}
+          >
+            {PHONE_PANS.map((p, i) => (
+              <Layer key={i} p={p} />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/*
        * Figma's "Pan" frame is 1754 wide against a 1440 canvas, i.e. 314 of it hangs off
        * the right edge — anchoring by that overhang keeps the ring in place at any width.
+       *
+       * From 431 up only: at 430 and below the 402 frame above is the design, and this stage
+       * drew a 489-wide ring across the top of the phone instead (see PHONE_PANS). 431-1024 is
+       * a range no Figma frame specifies and keeps the scaled 1440 reading it was verified with.
        */}
       <div
-        className="decor-stage absolute h-[1115px] w-[1754px] origin-top-right"
+        className="decor-stage absolute hidden h-[1115px] w-[1754px] origin-top-right min-[431px]:block"
         style={{
           top: 'calc(48px * var(--decor-fit))',
           right: 'calc(-314px * var(--decor-fit))',
@@ -373,12 +460,29 @@ const YELLOW_WAVE: Piece = {
 
 /**
  * The band that closes the page: 906 tall on the 1440 canvas, from the last card down to
- * the footer. Everything inside is placed against that canvas and the whole stage scales
- * below lg, so the mascot keeps its footing on the waves instead of drifting.
+ * the footer. Everything inside is placed against that canvas and the whole stage is scaled
+ * — continuously, at every width, see below — so the mascot keeps its footing on the waves
+ * instead of drifting.
  */
 export function HallOfFameWaveBand() {
   return (
-    <div aria-hidden className="hof-band pointer-events-none relative overflow-hidden">
+    /*
+     * `overflow-clip`, not `overflow-hidden`. The stage is a flat 1440 centred in the band, so
+     * below 1440 it hangs off BOTH sides — and the right-hand overhang is scrollable under
+     * `hidden`, which made the red band itself pannable by a touch drag (136px at 375).
+     * Exactly the bug the `html` note in index.css describes, inside one element.
+     *
+     * `--hof-scale` used to be set inline here, because index.css stepped it 0.45 / 0.7 /
+     * max(1, 100vw/1440) at 768 and 1024 and the two flat steps each left WHITE GUTTERS over
+     * the top of their band. It is now `max(0.45, tan(atan2(100vw, 1440px)))` in `.hof-band`
+     * itself, which is all three steps at once and none of the seams — never below 100vw/1440
+     * so the art always covers the viewport, floored at the 0.4496 Figma's own phone band is
+     * drawn at (`1190:1606`'s wave is 1502.87 of the 3342.99 on `1297:224`), and byte-identical
+     * to the old rule from 1440 up. The inline is deleted rather than kept: an inline
+     * declaration outranks a stylesheet one, so it was forcing the sheet's `@supports not
+     * (scale: tan(...))` fallback to carry an `!important` purely to beat it.
+     */
+    <div aria-hidden className="hof-band pointer-events-none relative overflow-clip">
       <div className="absolute top-0 left-1/2 -translate-x-1/2">
         <div className="hof-stage h-[906px] w-[1440px] origin-top">
           <div className="relative size-full">

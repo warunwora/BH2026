@@ -47,10 +47,7 @@ const TOMATOES: [number, number, number, number, number][] = [
  */
 export default function TeamDecor() {
   return (
-    <div
-      aria-hidden
-      className="team-decor pointer-events-none absolute inset-0 z-0 overflow-hidden"
-    >
+    <div aria-hidden className="team-decor pointer-events-none absolute inset-0 z-0 overflow-clip">
       {/*
        * Figma authors these against a 1440 canvas, so the stage keeps that width and centres.
        * It used to be gated `hidden lg:block`, which left /my-team a plain white page on every
@@ -61,7 +58,7 @@ export default function TeamDecor() {
        * center`, exactly as `.hof-band` does for the hall-of-fame closing band.
        */}
       <div className="team-decor-stage absolute top-0 left-1/2 h-[1024px] w-[1440px]">
-        <div className="absolute top-0 left-0 h-[509px] w-[1440px] overflow-hidden">
+        <div className="absolute top-0 left-0 h-[509px] w-[1440px] overflow-clip">
           {PASTAS.map(([w, h, left, top, rotate, iw, ih], i) => (
             <div
               key={i}
@@ -69,7 +66,7 @@ export default function TeamDecor() {
               style={{ width: w, height: h, left, top }}
             >
               <div className="flex-none" style={{ transform: `rotate(${rotate}deg)` }}>
-                <div className="relative overflow-hidden" style={{ width: iw, height: ih }}>
+                <div className="relative overflow-clip" style={{ width: iw, height: ih }}>
                   <img
                     src={PASTA}
                     alt=""
@@ -90,9 +87,19 @@ export default function TeamDecor() {
                   className="absolute flex items-center justify-center"
                   style={{ left, top, width: box, height: box }}
                 >
+                  {/*
+                   * `rotate()` FIRST, then the mirror. Figma's codegen states a mirrored node
+                   * as `-scale-y-100 … rotate-[Ndeg]`, which as Tailwind 4 classes are the
+                   * individual `rotate`/`scale` properties and compose in css-transforms-2's
+                   * fixed order — translate, rotate, scale — i.e. rotate then scale. Written
+                   * as one `transform` string in Figma's textual order the multiplication is
+                   * the other way round, and since S·R(N) === R(−N)·S that SILENTLY NEGATES
+                   * every angle: all three tomatoes were turned the wrong way. Same defect the
+                   * 404's prawn ring and this homepage's phone cutlery carried.
+                   */}
                   <div
                     className="flex-none"
-                    style={{ transform: `scaleY(-1) rotate(${rotate}deg)` }}
+                    style={{ transform: `rotate(${rotate}deg) scaleY(-1)` }}
                   >
                     <div className="relative" style={{ width: img, height: img }}>
                       <img

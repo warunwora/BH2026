@@ -121,8 +121,14 @@ export type StatusStep = {
   label?: string
   tone: StepTone
   /**
-   * Figma draws the badge at 28px instead of 32px on a couple of steps — the pending
-   * document review and every failed outcome — so the diameter is part of the data.
+   * The 28px badge (a 16 glyph in a 6px ring) instead of the 32 (a 20 glyph). Exactly ONE
+   * step in the eight designed cards is drawn this way: Not Qualified's rounds-of-selection
+   * row, `708:2883`. Every other badge in every other card — including the OTHER failed
+   * outcome, Semi-Final Failed `708:2971`, which is a 20 close glyph in a 32 pill — is 32.
+   *
+   * It was previously set on `reviewing`'s document review, which Figma draws at 32
+   * (`708:2662`), and StatusPanel additionally forced it onto any `failed` tone, which broke
+   * Semi-Final Failed. Both read off the frames now rather than being inferred from tone.
    */
   compact?: boolean
   /** Per-person review rows shown inside the document-review step. */
@@ -154,14 +160,25 @@ const DOCS_OK: StatusStep = { title: 'ตรวจสอบเอกสาร', 
 
 const person = (title: string, label: string, tone: StepTone) => ({ title, label, tone })
 
-/** Every step list in the designed status cards. */
+/**
+ * Every step list in the designed status cards. One entry per `Status Card / …` frame, in the
+ * order Figma lays them out:
+ *   reviewing            `708:2646`  Pending Review
+ *   issue                `708:2689`  Document Issues        (the only card with a contact row)
+ *   qualified            `708:2745`  Qualified for Selection
+ *   selection-pending    `708:2823`  Selection In Progress
+ *   selection-failed     `708:2857`  Not Qualified          (the only compact badge)
+ *   semifinal-qualified  `708:2779`  Passed Selection & Semi-Final
+ *   semifinal-pending    `708:2891`  Semi-Final Complete
+ *   semifinal-failed     `708:2935`  Semi-Final Failed
+ */
 export const STATUS_STEPS: Record<TeamStatus, StatusStep[]> = {
   reviewing: [
     REGISTERED,
     {
       title: 'ตรวจสอบเอกสาร',
       tone: 'pending',
-      compact: true,
+      // `708:2662` is a full 32 badge — the amber dot is 20 (`708:2663`), not 16.
       rows: MEMBERS.map((m) => person(m.tab, 'กำลังตรวจสอบ', 'pending')),
     },
   ],
@@ -190,7 +207,13 @@ export const STATUS_STEPS: Record<TeamStatus, StatusStep[]> = {
   'selection-failed': [
     REGISTERED,
     DOCS_OK,
-    { title: 'การเข้าแข่งขันรอบคัดเลือก', label: 'ไม่ผ่านการคัดเลือก', tone: 'failed' },
+    {
+      title: 'การเข้าแข่งขันรอบคัดเลือก',
+      label: 'ไม่ผ่านการคัดเลือก',
+      tone: 'failed',
+      // `708:2883` — 28 pill, 16 close glyph, in a 36x32 wrapper (`708:2882`).
+      compact: true,
+    },
   ],
   'semifinal-qualified': [
     REGISTERED,
@@ -208,11 +231,17 @@ export const STATUS_STEPS: Record<TeamStatus, StatusStep[]> = {
     REGISTERED,
     DOCS_OK,
     { title: 'การเข้าแข่งขันรอบคัดเลือก', label: 'ผ่านการคัดเลือก', tone: 'ok' },
+    // NOT compact: `708:2971` is a 32 pill with a 20 close glyph (`708:2972`), unlike
+    // Not Qualified's 28. Same tone, different diameter — hence the per-step flag.
     { title: 'การเข้าแข่งขันรอบรองชนะเลิศ', label: 'ไม่ผ่านการคัดเลือก', tone: 'failed' },
   ],
 }
 
-/** Figma 708:3147 — the second card the qualified dashboard stacks under the status card. */
+/**
+ * Figma 708:3147 — the second card the qualified dashboard stacks under the status card.
+ * All four strings re-verified against `708:3150` / `708:3151` / `708:3158` / `708:3160`,
+ * trailing space on `label` included (Figma's node carries it).
+ */
 export const DISCORD_CARD = {
   title: 'การเข้าแข่งขันรอบคัดเลือก',
   subtitle: 'กรุณาเข้าร่วม Discord เพื่อใช้ในการแข่งขัน',
@@ -220,15 +249,33 @@ export const DISCORD_CARD = {
   action: 'รับรหัสเข้าร่วม',
 }
 
+/*
+ * The two result dialogues, both transcribed from the 1440 frames and both re-verified
+ * character for character.
+ *
+ * NOTE for anyone opening these in Figma: the frame NAMES are swapped. `708:2979`
+ * "Qualified Modal" is the sheet that carries this copy and the Discord button
+ * (`708:3166`); `708:3373` "Qualified with Discord" actually holds the REJECTED sheet
+ * (`708:3560`); and `708:3187` "Not Qualified Modal" has no overlay on it at all. Go by the
+ * sheet ids below, not the frame names. Neither dialogue has a 402 counterpart anywhere in
+ * the file's Mobile section, so 1440 is the only anchor there is.
+ */
 export const QUALIFIED_MODAL = {
   image: '/assets/figma/8e7000b311d9ed819a112098ef1a6399fc8d8743.png',
+  /** `708:3169` — 40 / SemiBold / #282828. */
   title: 'ทีมของคุณมีสิทธิ์เข้าแข่งขันรอบคัดเลือก',
+  /** `708:3170` — 24 / Regular / #8c8c8c, split on the node's own newline. */
   lines: ['ขอแสดงความยินดีกับทีมของคุณ', 'กรุณาเข้าร่วม Discord สำหรับใช้ในการแข่งขันรอบคัดเลือก'],
 }
 
 export const REJECTED_MODAL = {
   image: '/assets/figma/88a60428462d844f1f3ed64f3d0783097c2d33ac.png',
+  /** `708:3563` — 40 / SemiBold / #c0563e, which is why MyTeam passes `text-brand-red`. */
   title: 'ทีมของคุณไม่มีสิทธิ์เข้าแข่งขันรอบคัดเลือก',
+  /*
+   * `708:3564` — 24 / Regular / #8c8c8c. One string in Figma with no newline in it, wrapping
+   * to two lines in its 720 box; kept as the same two lines here, which is where it breaks.
+   */
   lines: [
     'ขออภัยทีม เอกสารของทีมของคุณไม่ผ่านเกณฑ์การพิจารณา',
     'แล้วพบกันใหม่ในการแข่งขันครั้งหน้า',

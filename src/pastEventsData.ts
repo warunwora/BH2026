@@ -25,7 +25,17 @@ export type PastEvent = {
   logo: { src: string; crop?: Crop } | null
   /** Figma boxes the 2024 wordmark at 300x242; the other two marks are 1:1. */
   logoHeight: number
-  /** Background-blur radius on this card's "Scroll Edge Effect - Soft" instance. */
+  /**
+   * Peak background-blur radius on this card's "Scroll Edge Effect - Soft" instance.
+   *
+   * All three are **30**, and the 50 / 50 / 10 that used to be here was a misread. Those
+   * figures are the OUTER frame's `--scroll-edge-effect-blur-radius`, and that frame has no
+   * fill — Figma clips a background blur to the layer's own alpha, so an unfilled frame's
+   * blur renders nothing at all. The blur that actually paints is the inner "Blur" child's,
+   * which is a flat 30 on all three cards and on the nav band alike. Card 3's 10 was
+   * therefore ~3x too weak. Confirmed against the `1190:1515` render: there is no hard edge
+   * at the band's top, which a real 50px outer blur would have produced.
+   */
   edgeBlur: number
   awards: { label: string; winners: string[] }[]
 }
@@ -41,7 +51,7 @@ export const PAST_EVENTS: PastEvent[] = [
       crop: { left: -7.5, top: -17.54, width: 115.26, height: 115.26 },
     },
     logoHeight: 300,
-    edgeBlur: 50,
+    edgeBlur: 30,
     awards: [
       { label: 'รางวัลชนะเลิศ', winners: ['โรงเรียนระยองวิทยาคม'] },
       { label: 'รางวัลรองชนะเลิศอันดับ 1', winners: ['โรงเรียนปรินส์รอยแยลส์วิทยาลัย'] },
@@ -58,7 +68,7 @@ export const PAST_EVENTS: PastEvent[] = [
     photo: '/assets/figma/a5f11602db16c55a1851a282a3cd8cb0b9cbd48b.jpg',
     logo: null,
     logoHeight: 242,
-    edgeBlur: 50,
+    edgeBlur: 30,
     awards: [
       { label: 'รางวัลชนะเลิศ', winners: ['โรงเรียนสวนกุหลาบวิทยาลัย'] },
       { label: 'รางวัลรองชนะเลิศอันดับ 1', winners: ['โรงเรียนปทุมเทพวิทยาคาร'] },
@@ -76,7 +86,7 @@ export const PAST_EVENTS: PastEvent[] = [
     photoWash: 0.35,
     logo: { src: '/assets/figma/c7e06ba99e591f3701746b5c4cf082fb4e0c0ec0.png' },
     logoHeight: 300,
-    edgeBlur: 10,
+    edgeBlur: 30,
     awards: [
       { label: 'รางวัลชนะเลิศ', winners: ['โรงเรียนปทุมเทพวิทยาคาร'] },
       { label: 'รางวัลรองชนะเลิศอันดับ 1', winners: ['โรงเรียนเตรียมอุดมศึกษา'] },

@@ -25,8 +25,16 @@ function pinner(cw: number, ch: number) {
  * composition at two sizes: the 1440 plate is 540x200 with a 224-wide centre photo, the
  * phone plate (1190:632 / 1190:640 / 1190:646) is 322x160 — 306 on the documents card,
  * which insets 24 rather than 16 — with a 140-wide one. Both sets are published on the
- * `<img>` as custom properties so a single element can carry both and let `lg:` choose;
+ * `<img>` as custom properties so a single element can carry both and let `md:` choose;
  * pinning one of them inline would have made it unbeatable by the other.
+ *
+ * The choice is made at `md` and not at `lg`, which is where it used to sit. `md` is where
+ * Figma's two-up row starts to exist (1190:630 stacks the same three cards below it), so it
+ * is also where the card stops being the phone's full-width block and becomes the desktop
+ * row's half-column: 318 wide at 768 against desktop's 588, i.e. 0.54 of it where the
+ * viewport is 0.533 of 1440. The plate that box wants is the 540x200 one. Left at `lg` the
+ * 768-1023 band drew the phone's taller 322x160 plate with the phone's tighter photo fan and
+ * then re-pinned all four photos at 1024.
  */
 const pinDesk = pinner(540, 200)
 const pinDeskTall = pinner(540, 290)
@@ -52,11 +60,21 @@ function pins(phone: Pin, desk: Pin, rotate = 0) {
 
 const PIN =
   'absolute object-cover left-[var(--pl)] top-[var(--pt)] w-[var(--pw)] h-[var(--ph)] ' +
-  'lg:left-[var(--dl)] lg:top-[var(--dt)] lg:w-[var(--dw)] lg:h-[var(--dh)]'
+  'md:left-[var(--dl)] md:top-[var(--dt)] md:w-[var(--dw)] md:h-[var(--dh)]'
 
-/** The plate itself: 322x160 on the phone, 540x200 (540x290 for documents) at 1440. */
-const PLATE = 'relative mx-auto aspect-[322/160] w-full max-w-[540px] lg:aspect-[540/200]'
-const PLATE_TALL = 'relative mx-auto aspect-[306/160] w-full max-w-[540px] lg:aspect-[540/290]'
+/**
+ * The plate itself: 322x160 on the phone, 540x200 (540x290 for documents) from `md` up.
+ *
+ * `mm-fan` is the plate's arrival, driven by the card's own reveal rather than by anything in
+ * this file: the two tilted team photos swing out from a narrower fan and the single-photo
+ * plates scale up, 120ms behind the card, on the reveal's own curve. The rule reads the photos
+ * by paint order (`:nth-child`), which is why the pin tables below must keep listing the
+ * upright centre photo first — see `.mm-fan` in styles/micro-motion.css for the full spec and
+ * for why it animates `rotate`/`scale` and never `transform`, which `pins()` already owns.
+ */
+const PLATE = 'mm-fan relative mx-auto aspect-[322/160] w-full max-w-[540px] md:aspect-[540/200]'
+const PLATE_TALL =
+  'mm-fan relative mx-auto aspect-[306/160] w-full max-w-[540px] md:aspect-[540/290]'
 
 /**
  * Three student photos fanned out. Figma paints the upright centre one first, so the two
@@ -68,8 +86,12 @@ const PLATE_TALL = 'relative mx-auto aspect-[306/160] w-full max-w-[540px] lg:as
  */
 const TEAM_PHOTOS = [
   { style: pins(pinPhone(90.89, 10, 140, 123), pinDesk(158, 0, 224, 196)) },
-  { style: pins(pinPhone(42.141, 47.42, 97.388, 85.215), pinDesk(80, 60, 156, 136), -27.38) },
-  { style: pins(pinPhone(182.33, 47.48, 97.388, 85.215), pinDesk(304, 60, 156, 136), 26.89) },
+  {
+    style: pins(pinPhone(42.141, 47.42, 97.388, 85.215), pinDesk(80, 60, 156, 136), -27.38),
+  },
+  {
+    style: pins(pinPhone(182.33, 47.48, 97.388, 85.215), pinDesk(304, 60, 156, 136), 26.89),
+  },
 ]
 
 /** 1190:641 / 1190:647 centre a single 140 square in the plate. */
@@ -93,6 +115,13 @@ const ILLUSTRATIONS = [
  *
  * 1190:631/639 inset the two step cards by 16 on the phone (24 at 1440), while 1190:645
  * insets the documents card by 24 at both ends — so the padding is no longer shared.
+ */
+/*
+ * `rounded-3xl` (24) is FLAT, verified live 2026-08-06: `1190:631` and `708:200` are both
+ * `rounded-[24px]`. Worth stating, because the sibling cards on this site do NOT agree — the
+ * calendar's rows are 16 on the phone and 24 at 1440 (`1190:614` / `708:181`, hence the ramp
+ * in Calendar.tsx), the Codern card and the contact map are 16 -> 24, the scope card is a flat
+ * 16 and the past-event tile a flat 40. There is no one card radius to hoist; each is read.
  */
 const CARD = 'rounded-3xl bg-white shadow-soft'
 const STEP_PAD = 'p-[calc(16px_+_8*var(--fl))]'
@@ -167,18 +196,63 @@ export default function Steps() {
   const docs = useReveal<HTMLElement>()
 
   return (
-    // Figma: the header sits flush at the section top — the run-up above it belongs to
-    // the calendar's tail. 109 of tail here carries the row into the red prize band.
+    /*
+     * Figma: the header sits flush at the section top — the run-up above it belongs to the
+     * calendar's tail. 109 of tail here carries the row into the red prize band.
+     *
+     * ------------------------------------------------- the "02" that vanishes at 1440
+     *
+     * Known bug, NOT fixable from this file, measured at 1440 so the next reader does not have
+     * to re-derive it:
+     *
+     *   - the "02" eyebrow's glyph box lands at page y 2540..2554.
+     *   - `GARLIC_LEFT` (HomeBackground.tsx) is pinned at Figma page y 2184.068 and is 363.932
+     *     tall, so its yellow wave's bottom edge is at 2548.0.
+     *   - that wave is `#D79A4E`, byte-for-byte `--color-brand-yellow`, which is the eyebrow's
+     *     own colour (Figma 708:195 confirms #d79a4e). The top 8px of the digits are therefore
+     *     drawn in the wave's colour on the wave and the number reads as half-eaten.
+     *
+     * It is not a stacking bug and cannot be fixed by raising one: the column below is already
+     * `relative z-10` against a canvas that is `-z-10` inside the page wrapper's `isolate`, so
+     * the number IS painted on top — it just has nothing to contrast with. Nor is it a colour
+     * bug: Figma's own render of 708:39 has the garlic wave ending well clear of the heading,
+     * with the header at y2588 to the wave's 2548 — 40px of cream between them.
+     *
+     * The live page is 48px short of that 2588, which is the whole of the defect. Fixing it by
+     * padding this section is what a first pass would reach for and is wrong: the Prizes
+     * content is currently 18.5px ABOVE its Figma y (live "03" at 3890, Figma 708:267 at
+     * 3908.5) while the red band it sits on is canvas-anchored and would not move with it, so
+     * +48 here buys a legible "02" at the price of dropping Prizes 30px off its own band.
+     *
+     * The fix belongs to the decoration, not to the rhythm: HomeBackground.tsx GARLIC_LEFT.y
+     * 2184.068 -> 2136.068. -48 puts the wave's bottom at 2500, restores Figma's exact 40px of
+     * clearance above the live header, and reflows nothing — the calendar's tail is empty page
+     * from ~2050 down to this header, so the group has the room to move up into.
+     */
     <section id="steps" className="shell sec-steps relative">
       {/* 1190:626 opens 24 between the header and the first card, 40 at 1440 */}
       <div className="relative z-10 mx-auto flex max-w-[1200px] flex-col gap-[calc(24px_+_16*var(--fl))]">
         <div ref={head.ref} className={head.cls}>
-          <SectionHeader number="02" title="ขั้นตอนสมัครเข้าแข่งขัน" />
+          {/* `708:196` — shortened from ขั้นตอนสมัครเข้าแข่งขัน. The footer still links to this
+              section by its own label, which lives in `FOOTER_GROUPS`. */}
+          <SectionHeader number="02" title="ขั้นตอนการสมัคร" />
         </div>
 
-        {/* Figma splits the row 588 / 588 inside the 1200 column, 936 tall; below `md`
-            1190:630 stacks the same three cards on a 12 gap in the same order. */}
-        <div className={`grid items-stretch md:grid-cols-2 lg:min-h-[936px] ${STACK_GAP}`}>
+        {/*
+         * Figma splits the row 588 / 588 inside the 1200 column, 936 tall; below `md`
+         * 1190:630 stacks the same three cards on a 12 gap in the same order.
+         *
+         * The 936 is Figma's height for the row and it is a FLOOR, not a size — the left
+         * column centres two cards inside it and the documents card justifies between. As a
+         * hard px from `lg` it was the one number in this section that did not come down with
+         * the viewport: at 1024 it reserved 936 for a row whose content asks for ~700, opening
+         * a quarter-screen of blank page inside the section. 65vw is 936/1440, so it is
+         * Figma's own figure at 1440 and the same fraction of the stage below it; `min()`
+         * freezes it at 936 above 1440, where the 1200 column and `--fl` are frozen too.
+         */}
+        <div
+          className={`grid items-stretch md:min-h-[min(936px,65vw)] md:grid-cols-2 ${STACK_GAP}`}
+        >
           <div className={`flex min-w-0 flex-col justify-center ${STACK_GAP}`}>
             {STEP_CARDS.map((card, i) => (
               <StepCard key={card.title} card={card} i={i} />

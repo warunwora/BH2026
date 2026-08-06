@@ -62,6 +62,115 @@
   --decor-fit: min(1, tan(atan2(100vw, 1440px)));
 }
 
+/* ------------------------------------------------- the no-trig fallback ladder ----
+
+   `tan()` / `atan2()` are Chrome 111+, Safari 15.4+, Firefox 108+. Below any of those the
+   function is unknown, so `min(1, tan(atan2(100vw, 1440px)))` cannot be parsed as a
+   <number>. It still *stores* fine — a custom property is a token stream and is not
+   validated until it is substituted — so the failure surfaces at the consumer: `scale:
+   var(--decor-fit)` becomes invalid at computed-value time and computes to the property's
+   INITIAL value, i.e. `scale: none`. Every decoration canvas would then draw at its authored
+   1440 size on a 375 phone, centred, with only the middle 375px on screen: the garlic, the
+   cutlery, the tomatoes and the closing wave all land somewhere the design never puts them.
+   That is the "backgrounds in the wrong place" failure, not a missing polish.
+
+   There is no pre-trig way to divide a length by a length in CSS, so the fallback is a step
+   ladder in media queries. READ THIS BEFORE "FIXING" THE QUERY SYNTAX: these are written as
+   `min-width`, but Tailwind 4 runs the sheet through Lightning CSS at a hardcoded Safari 16.4
+   / Chrome 111 / Firefox 128 target (node_modules/@tailwindcss/node, not configurable and not
+   affected by a browserslist), and the optimizer rewrites every one of them to the Media
+   Queries 4 range form — `@media (width >= 384px)`, which is itself Safari 16.4+. Verified in
+   the build output. There is no way to keep the legacy form from inside a Tailwind pipeline.
+
+   That is fine, and the reason is worth writing down. Line up the two floors per engine:
+
+     Chrome/Edge   range 104, trig 111  ->  104-110 needs this ladder and can read it   ✓
+     Firefox       range 102, trig 108  ->  102-107 needs this ladder and can read it   ✓
+     Safari        trig 15.4, range 16.4 -> trig lands FIRST, so no Safari both needs
+                                            the ladder and can read it
+
+   So the ladder covers every engine that lacks trig *and can still render this site*. Safari
+   below 15.4 cannot read it — but that Safari also cannot read a single Tailwind breakpoint
+   for the same range-syntax reason, so it renders the base mobile layout at every width and is
+   not recoverable by anything in this file. See the report in index.css's `@supports not
+   (overflow: clip)` note for what IS recoverable there.
+
+   One step is 96px, which is exactly 1/15 of 1440 — so every rung is n/15 and the ladder
+   reads as "how many fifteenths of the canvas fit". Each rung carries its band's UPPER bound
+   rather than its midpoint, so the value is never BELOW the true 100vw/1440. That direction
+   is the safe one for all three consumers: too large means a few more px of a canvas are
+   cropped by an `overflow` that is already cropping it, where too small means white down the
+   sides of `.hof-band`. Worst-case error is +6.7% at the bottom of a band, against the
+   +300% of no fallback at all.
+
+   `--vw-1440` is published on `:root` for index.css's `.team-decor-stage` and `.hof-band`
+   to read as well — the three of them are the same ratio and must not drift apart. */
+@supports not (scale: tan(atan2(1px, 1px))) {
+  :root {
+    --vw-1440: 0.2667; /* below 384 */
+  }
+  @media (min-width: 384px) {
+    :root {
+      --vw-1440: 0.3334;
+    }
+  }
+  @media (min-width: 480px) {
+    :root {
+      --vw-1440: 0.4;
+    }
+  }
+  @media (min-width: 576px) {
+    :root {
+      --vw-1440: 0.4667;
+    }
+  }
+  @media (min-width: 672px) {
+    :root {
+      --vw-1440: 0.5334;
+    }
+  }
+  @media (min-width: 768px) {
+    :root {
+      --vw-1440: 0.6;
+    }
+  }
+  @media (min-width: 864px) {
+    :root {
+      --vw-1440: 0.6667;
+    }
+  }
+  @media (min-width: 960px) {
+    :root {
+      --vw-1440: 0.7334;
+    }
+  }
+  @media (min-width: 1056px) {
+    :root {
+      --vw-1440: 0.8;
+    }
+  }
+  @media (min-width: 1152px) {
+    :root {
+      --vw-1440: 0.8667;
+    }
+  }
+  @media (min-width: 1248px) {
+    :root {
+      --vw-1440: 0.9334;
+    }
+  }
+  @media (min-width: 1344px) {
+    :root {
+      --vw-1440: 1; /* capped, as `min(1, …)` does */
+    }
+  }
+
+  /* The `min(1, …)` cap is already in the ladder, so this is a straight substitution. */
+  .decor-fit {
+    --decor-fit: var(--vw-1440);
+  }
+}
+
 /* The one clock. Four decorations turn across this site — sign-in's pan and its shaker
    ring, hall of fame's pan ring, and the 404's shrimp ring — and the comments below each
    of them insist the period must be identical, because two rings at 96s and 92s read as
@@ -167,38 +276,18 @@
   }
 }
 
-/* ------------------------------------------------------------------ the pan ----
+/* ----------------------------------------------------------- the 360deg turn ----
 
-   Sign-in's pan, turning the way the shaker ring beside it does — same 96s, same linear
-   curve, so the two decorations read as one clock rather than two.
-
-   The one thing it cannot borrow is the ring's `transform-origin: 50% 50%`. The ring's
-   eight shakers average out to the centre of their box; the pan is a single drawing of a
-   bowl with a handle running off to the top right, and its bowl — the thing that has to
-   look like it is spinning in place — is centred at (325, 275) of the 654x465 art, i.e.
-   49.7% / 59.1%. Turning about the box centre instead would swing the whole pan around a
-   point 50px below the bowl and read as an orbit.
-
-   The class belongs on an inner element, not on the same one as `auth-rise`: the entrance
-   animates `transform` too, and the two would fight — the same split the ring already
-   makes. See components/AuthBackdrop.tsx. */
+   One turn, shared by the two rings below. Sign-in's pan used to be a third consumer via
+   `.auth-pan-turn`, with a hand-solved `transform-origin: 49.7% 59.1%` (the bowl's centre in
+   the 654x465 art, since turning that drawing about its box centre orbited it around a point
+   50px under the bowl). That rule is gone — the pan is static by design now, and
+   AuthBackdrop renders it as a single element rather than the wrapper-plus-image split the
+   turn needed. The keyframe stays: both rings still want exactly this animation, at the same
+   period, so the decorations across the site read as one clock. */
 @keyframes pan-turn {
   to {
     transform: rotate(360deg);
-  }
-}
-
-.auth-pan-turn {
-  transform-origin: 49.7% 59.1%;
-  animation: pan-turn var(--turn-period, 96s) linear infinite;
-  /* one large PNG under one transform — promote the layer once, not per frame */
-  will-change: transform;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .auth-pan-turn {
-    animation: none;
-    will-change: auto;
   }
 }
 
@@ -247,10 +336,16 @@
    circle about the middle of the box, so their mean *is* 50% / 50% (see the coordinate
    table in pages/NotFound.tsx). Same `pan-turn`, same period token, same reason.
 
-   The class goes on the ring GROUP, never on a shrimp: each shrimp box already carries
-   Figma's own `scaleY(-1) rotate(...)` inline, and an animation on `transform` would
-   overwrite it and flatten the arrangement. Same split as the two rings above — see the
-   note at the head of `.auth-pan-turn`. */
+   The class goes on the ring GROUP, never on a shrimp: each shrimp box already carries its own
+   `rotate(...) scaleY(-1)` inline, and an animation on `transform` would overwrite it and
+   flatten the arrangement. Same split as the pan ring above.
+
+   That ORDER is load-bearing and was wrong here for a while. Figma emits `-scale-y-100
+   rotate-[Ndeg]`, which are the INDIVIDUAL `scale`/`rotate` properties, and css-transforms-2
+   composes those translate → rotate → scale. Hand-writing them into one `transform` in Figma's
+   textual order applies scale first, and since `S·R(N) === R(−N)·S` that negates every angle —
+   which turned this ring into a heap of prawns lying across each other. Anywhere a single
+   `transform` string carries both a flip and a rotation, the rotation goes first. */
 .nf-shrimp-ring {
   transform-origin: 50% 50%;
   animation: pan-turn var(--turn-period, 96s) linear infinite;

@@ -120,29 +120,44 @@
  * Stagger, not a formula: 50-60ms between neighbours is the window Emil's notes give
  * for a cascade that still reads as one gesture. The last delay lands at 330ms, so the
  * whole entrance is over inside 900ms.
+ *
+ * Each rung also PUBLISHES its delay as `--auth-rise-delay`, which is the same trick
+ * `--reveal-delay` plays for the marketing pages (index.css): a custom property inherits, so
+ * anything nested inside a rung can time itself off the rung's own delay instead of restating
+ * the ladder. The status timeline's drawn ticks are the first reader — see `.auth-step-check`.
+ * Set outside the `[data-auth-entrance]` gate on purpose: it is a number, not an animation, and
+ * a reader that is itself gated should be able to ask for it either way.
  */
 .auth-rise[data-rise='0'] {
+  --auth-rise-delay: 0ms;
   animation-delay: 0ms;
 }
 .auth-rise[data-rise='1'] {
+  --auth-rise-delay: 60ms;
   animation-delay: 60ms;
 }
 .auth-rise[data-rise='2'] {
+  --auth-rise-delay: 110ms;
   animation-delay: 110ms;
 }
 .auth-rise[data-rise='3'] {
+  --auth-rise-delay: 160ms;
   animation-delay: 160ms;
 }
 .auth-rise[data-rise='4'] {
+  --auth-rise-delay: 210ms;
   animation-delay: 210ms;
 }
 .auth-rise[data-rise='5'] {
+  --auth-rise-delay: 250ms;
   animation-delay: 250ms;
 }
 .auth-rise[data-rise='6'] {
+  --auth-rise-delay: 290ms;
   animation-delay: 290ms;
 }
 .auth-rise[data-rise='7'] {
+  --auth-rise-delay: 330ms;
   animation-delay: 330ms;
 }
 
@@ -213,6 +228,55 @@
 
   .auth-block-amber {
     view-transition-name: auth-block-amber;
+  }
+
+  /*
+   * …EXCEPT on the two hops between the wizard and a result screen, where they are named
+   * off again. This is the fix for "มันทับกันแปลก ๆ เอาพื้นหลังไปไว้หลัง", and the reason is
+   * the one thing about this API that cannot be worked around from the pseudo-element side:
+   * THE AUTHOR DOES NOT GET TO PICK THE PAINT ORDER.
+   *
+   * The transition builds an ordered list of names — every name found in the OLD state, in
+   * that document's tree order, and then every name that exists only in the NEW state,
+   * appended after them — and paints the groups in that order, back to front. `root` is
+   * always first, i.e. always at the bottom; there is no z-index that reaches a
+   * `::view-transition-group`.
+   *
+   * On a submit the old state is a wizard step, which paints no colour blocks at all. So the
+   * list came out
+   *
+   *   root, wizard-pasta, auth-topbar, auth-sheet, wizard-progress, wizard-body,
+   *   auth-block-amber, auth-block-green, auth-block-red
+   *
+   * — the three blocks LAST, which is to say on top of the outgoing form AND on top of the
+   * result card arriving underneath them. Measured at 402 and at 1440: at t=60ms the terms
+   * step was fully legible through three half-opaque colour fills, and by t=300 the fills were
+   * opaque and the success card was entirely behind them. The blocks were not decorating the
+   * hop, they were eclipsing it.
+   *
+   * Unnamed, they stay part of `::view-transition-new(root)` — the first group, i.e. the
+   * bottom one — so the incoming ground cross-fades UNDER the form that is leaving and under
+   * the plate that is arriving, which is what the user asked for and what a background is.
+   * Nothing is lost by dropping the name on this hop: a name is only worth having when the
+   * shape has a counterpart to travel to, or when it needs an exit of its own (which is what
+   * `auth-food-*` is for), and here it has neither — the blocks are simply the new screen's
+   * floor.
+   *
+   * The gate and enter hops KEEP their names, and must: `gate` morphs each block into its
+   * twin at twice the size, and on `enter`/`enter-back` the blocks are in the OLD list, where
+   * being painted above the incoming wizard is exactly the sinking-away they are given.
+   *
+   * `data-auth-nav` is set on `<html>` by a router subscriber before `startViewTransition` and
+   * is not cleared until the next navigation (form/wizardNav.ts), so it is in place for BOTH
+   * captures — which is what a `view-transition-name` override needs to be honest.
+   */
+  :root[data-auth-nav='submit'] .auth-block-red,
+  :root[data-auth-nav='submit'] .auth-block-green,
+  :root[data-auth-nav='submit'] .auth-block-amber,
+  :root[data-auth-nav='submit-back'] .auth-block-red,
+  :root[data-auth-nav='submit-back'] .auth-block-green,
+  :root[data-auth-nav='submit-back'] .auth-block-amber {
+    view-transition-name: none;
   }
 
   /*
@@ -330,32 +394,25 @@
    * keyframes belongs. Colour drops away *downwards* as the wizard opens and rises back as
    * it closes, which is the opposite direction to the sheet on the same hop: the two
    * crossing is what makes it read as one screen handing over to another.
-   */
-  /*
-   * The green block is listed for `submit` as well, and only green. The error screen drops it
-   * (`MUTED_BLOCKS` in AuthBackdrop.tsx is red and amber), so it is the one shape a submit can
-   * leave without a counterpart to travel to — and without this it would take the ungated
-   * 240ms cross-fade above while its two neighbours are running a 460ms arrival, which is the
-   * one block in the set visibly on a different clock. Latent today: `submit` is only ever
-   * fired from the terms step, which paints no colour blocks at all, so it becomes live the
-   * day a real submit handler can route from a colour-bearing screen to the error one.
+   *
+   * `enter` / `enter-back` ONLY, now. There used to be a second pair of selectors here for
+   * `submit` and `submit-back` — the same sink and arrival, plus a single-block special case
+   * for green, on the reading that a submit is the same kind of hop as an enter. It is not: on
+   * an enter the blocks are in the OLD list and therefore above the screen they are leaving,
+   * which is what makes sinking read correctly, while on a submit they were in the NEW list and
+   * therefore above everything, including the card they are supposed to be behind. Those hops
+   * now drop the name entirely (see the override up beside the declarations), so the blocks
+   * travel with `::view-transition-*(root)` and there is nothing here for them to match.
    */
   :root[data-auth-nav='enter']::view-transition-old(auth-block-red),
   :root[data-auth-nav='enter']::view-transition-old(auth-block-green),
-  :root[data-auth-nav='enter']::view-transition-old(auth-block-amber),
-  :root[data-auth-nav='submit']::view-transition-old(auth-block-green),
-  :root[data-auth-nav='submit-back']::view-transition-old(auth-block-red),
-  :root[data-auth-nav='submit-back']::view-transition-old(auth-block-green),
-  :root[data-auth-nav='submit-back']::view-transition-old(auth-block-amber) {
+  :root[data-auth-nav='enter']::view-transition-old(auth-block-amber) {
     animation: auth-block-sink 320ms var(--ease-in-auth) both;
   }
 
   :root[data-auth-nav='enter-back']::view-transition-new(auth-block-red),
   :root[data-auth-nav='enter-back']::view-transition-new(auth-block-green),
-  :root[data-auth-nav='enter-back']::view-transition-new(auth-block-amber),
-  :root[data-auth-nav='submit']::view-transition-new(auth-block-red),
-  :root[data-auth-nav='submit']::view-transition-new(auth-block-green),
-  :root[data-auth-nav='submit']::view-transition-new(auth-block-amber) {
+  :root[data-auth-nav='enter-back']::view-transition-new(auth-block-amber) {
     animation: auth-block-arrive 460ms var(--ease-out-auth) both;
   }
 
@@ -465,10 +522,30 @@
   }
 
   /*
-   * One white plate runs the whole flow: the requirements card on the gate becomes the
-   * wizard's form card becomes the success/error card. Naming all three `auth-sheet`
-   * means the plate is the thing that persists on every hop and only its contents
-   * change — the continuity the rest of these rules are built around.
+   * One white plate runs the FORM: the requirements card on the gate becomes the wizard's
+   * form card and stays that card for all five steps. Naming both `auth-sheet` means the
+   * plate is what persists across those hops and only its contents change — the continuity
+   * the rest of these rules are built around.
+   *
+   * The RESULT card is deliberately not part of it, and used to be. Sharing one name made the
+   * submit hop a morph from the wizard's plate into the result plate, and a morph is a promise
+   * about geometry that this pair cannot keep:
+   *
+   *  - the group interpolates from the OLD box, and `::view-transition-new` is laid into that
+   *    box top-aligned at `inline-size: 100%` with an auto block size. So for the whole
+   *    morph the incoming card is drawn anchored to the OUTGOING card's top edge.
+   *  - the outgoing card is a form the user has been scrolling. Measured at 402 with the terms
+   *    step scrolled to its submit button (y=691 of a 1565-tall document), the wizard plate's
+   *    captured box starts ~560px ABOVE the viewport — so the result card was painted from
+   *    there, which put its action pill, the last thing in the card, at the TOP-LEFT of the
+   *    screen for the first third of the transition before it travelled down into place. That
+   *    is the second half of the report, and it is not a bug in the choreography: it is what
+   *    asking for a morph between two boxes that share no content and no position means.
+   *
+   * So the result plate gets its own name and its own arrival (`auth-result`, below). What the
+   * two cards actually have in common is that they are both white plates in the same column,
+   * which a cross-fade and a present express honestly; what they do not have in common is a
+   * position, a height, or a single element inside them.
    */
   .auth-sheet {
     view-transition-name: auth-sheet;
@@ -484,12 +561,16 @@
     animation-duration: 0s;
   }
 
+  /*
+   * The gate hop is the one that MUST travel — the gate's card and the wizard's card are the
+   * same plate at two sizes in the same column, one screen apart, and the morph is the whole
+   * point of the flow. `submit` and `submit-back` are gone from this list because the plate no
+   * longer has a counterpart on those hops at all; see `.auth-sheet` above.
+   */
   :root[data-auth-nav='gate']::view-transition-group(auth-sheet),
   :root[data-auth-nav='gate-back']::view-transition-group(auth-sheet),
   :root[data-auth-nav='enter']::view-transition-group(auth-sheet),
-  :root[data-auth-nav='enter-back']::view-transition-group(auth-sheet),
-  :root[data-auth-nav='submit']::view-transition-group(auth-sheet),
-  :root[data-auth-nav='submit-back']::view-transition-group(auth-sheet) {
+  :root[data-auth-nav='enter-back']::view-transition-group(auth-sheet) {
     animation-duration: 520ms;
     animation-timing-function: var(--ease-morph);
   }
@@ -501,6 +582,78 @@
   ::view-transition-new(auth-sheet) {
     animation: auth-fade-in 380ms var(--ease-out-auth) both;
   }
+
+  /* ------------------------------------------------ the result plate ---- */
+
+  /*
+   * The success and error cards. One name for both, because those two genuinely ARE one plate
+   * with two states — same 900x846 box, same column, same three regions — so an error routed
+   * from a success (or the recolour `MUTED_BLOCKS` describes) is the same object changing
+   * rather than a screen replacing another. Its group is pinned for exactly that reason:
+   * identical boxes have nothing to travel, and a zero-length group animation is how this file
+   * says "this did not move" (the wizard steps' plate and the marketing chrome both say it the
+   * same way).
+   *
+   * Pinning is also what fixes the geometry half of the submit report. With the group holding
+   * the NEW box from frame one, `::view-transition-new(auth-result)` is drawn at exactly the
+   * card's own size in exactly its own place — no anchor to an outgoing box, no scale, nothing
+   * inside the card displaced. Everything below is then free to be the card's ARRIVAL rather
+   * than a correction to a morph.
+   */
+  .auth-result {
+    view-transition-name: auth-result;
+  }
+
+  ::view-transition-group(auth-result) {
+    animation-duration: 0s;
+  }
+
+  ::view-transition-old(auth-result) {
+    animation: auth-fade-out 200ms var(--ease-out-auth) both;
+  }
+
+  ::view-transition-new(auth-result) {
+    animation: auth-fade-in 380ms var(--ease-out-auth) both;
+  }
+
+  /*
+   * Submitting the registration, the result plate is PRESENTED — the same gesture, off the same
+   * edge, on the same sampled spring as the registration sheet on the gate hop. That is
+   * deliberate reuse and not laziness: those two moments are the two ends of the same errand
+   * ("here is what you have to bring" / "here is what happened"), they are the two screens in
+   * the flow a user reaches once, and the plate is the object that answers in both. The user
+   * also just pressed a button at the BOTTOM of a scrolled page, so an answer that comes up off
+   * the bottom edge is where they are already looking.
+   *
+   * 640 against the gate's 700: fractionally quicker, because this is a reply rather than an
+   * opening. `linear`, because the samples in `auth-sheet-present` ARE the easing — any timing
+   * function on top would ease each 5% segment separately and flatten the settle.
+   *
+   * The delay buys the thing this comment already argued for: the ground commits to changing
+   * first and the plate answers it, so the two read as one gesture instead of two things
+   * happening at once. It was 100ms, which was too short to actually deliver that — the root
+   * pair ran from t=0, so the plate was answering a ground that had not committed. It is now
+   * 240 = the root pair's own 180ms delay plus the 60 it takes to read as a reply. See the
+   * serialisation block further down.
+   *
+   * The plate is painted above the outgoing form here — new-only names are appended last, so
+   * for once the paint order is the one we want — which is what lets it cover the form as it
+   * rises instead of sliding under it.
+   */
+  :root[data-auth-nav='submit']::view-transition-new(auth-result) {
+    animation:
+      auth-fade-in 140ms linear 240ms both,
+      auth-sheet-present 640ms linear 240ms both;
+  }
+
+  /*
+   * Coming BACK out of a result — the error screen's ลองอีกครั้ง — the plate does not get the
+   * mirrored dismissal the gate hop gives its sheet, and that is a paint-order fact rather than
+   * an inconsistency. On this hop the wizard's plate, progress bar, form and pasta are all
+   * new-only, so every one of them is appended after `auth-result` and paints OVER it: a
+   * 560ms drop would be performed entirely behind the screen that replaced it. It takes the
+   * plain 200ms fade above instead, under a form arriving on its own choreography.
+   */
 
   /*
    * Sign-in has no plate, so this hop is a pure entry — and it is the beat the whole
@@ -604,6 +757,70 @@
     animation-delay: 300ms;
     animation-timing-function: var(--ease-out-auth);
   }
+
+  /*
+   * Serialise the submit hop — this is the second cause of the "หน้าทับกัน" report, and it is a
+   * different bug from the first. Dropping the three `auth-block-*` names put the colour ground
+   * back in the bottom group, so paint order is now right; but both halves still started at
+   * t=0. Measured on a frozen hop at 402 and 1440: at t=80ms the wizard plate is at opacity 0.6
+   * while the incoming ground is already 22% opaque UNDERNEATH it, and a half-transparent white
+   * plate does not hide a background — the whole terms step stayed legible through three colour
+   * fills. Indistinguishable from the original complaint, hence the report that it was not
+   * fixed.
+   *
+   * So: the form owns the first 180ms over its OWN ground, then the ground changes, then the
+   * plate answers (240ms, above). Three things that were racing now happen in order.
+   *
+   * `animation-delay`/`animation-duration` only, never the shorthand — same reason as the
+   * `gate-back` rule above: the UA's `-ua-mix-blend-mode-plus-lighter` companion has to survive,
+   * and during the delay the `both` fill holds each snapshot at its start frame, so the outgoing
+   * ground stays put and there is no gap to see through.
+   */
+  :root[data-auth-nav='submit']::view-transition-old(root),
+  :root[data-auth-nav='submit']::view-transition-new(root) {
+    animation-duration: 300ms;
+    animation-delay: 180ms;
+    animation-timing-function: var(--ease-out-auth);
+  }
+
+  /*
+   * The progress bar took the UA's 320ms fade, outliving by 120ms the form it belongs to, and
+   * ghosted over the new ground. It leaves with the rest of the wizard instead.
+   */
+  :root[data-auth-nav='submit']::view-transition-old(wizard-progress) {
+    animation: auth-fade-out 200ms var(--ease-out-auth) both;
+  }
+
+  /*
+   * The same defect on the reverse hop (the error screen's ลองอีกครั้ง). Here the wizard's
+   * plate, body, progress and pasta are ALL new-only, so all of them are appended last and fade
+   * in over an error card that has not left — the mascot and title ghost straight through the
+   * terms card. Same remedy, same beats.
+   */
+  :root[data-auth-nav='submit-back']::view-transition-old(root),
+  :root[data-auth-nav='submit-back']::view-transition-new(root) {
+    animation-duration: 300ms;
+    animation-delay: 180ms;
+    animation-timing-function: var(--ease-out-auth);
+  }
+
+  :root[data-auth-nav='submit-back']::view-transition-new(auth-sheet) {
+    animation: auth-fade-in 380ms var(--ease-out-auth) 240ms both;
+  }
+
+  /*
+   * The wizard's own four names are deliberately NOT delayed here. Their `animation`
+   * shorthands live in the wizard block further down the file, and a shorthand resets
+   * `animation-delay` to 0 — so a delay written at this point in the cascade is discarded by a
+   * rule of equal specificity 400 lines later. That is not a hypothesis: measured on the frozen
+   * pop at 402, `new(wizard-body)` and `new(wizard-pasta)` both reported `delay: 0` while
+   * `new(wizard-progress)` (the one name with no later shorthand) correctly reported 240. So the
+   * reverse hop was still racing — the form and the pasta arrived from t=0 over an error card
+   * that fades until t=200, which is the same ghosting the forward hop had.
+   *
+   * The four of them are retimed at the very end of the wizard block instead, where they are
+   * last in the cascade and win. Search `SERIALISE THE POP`.
+   */
 
   /*
    * The account chip and the "หน้าหลัก" link are the same two controls in the same
@@ -999,6 +1216,30 @@
   :root[data-auth-nav='submit-back']::view-transition-new(wizard-body) {
     animation: wizard-enter-back 300ms var(--ease-out-auth) both;
   }
+
+  /*
+   * SERIALISE THE POP — the reverse of the submit hop, and the mirror of the delays in the auth
+   * block above. It has to be HERE, after every `animation` shorthand that names these four
+   * pseudo-elements, because a shorthand resets `animation-delay` to 0 and the cascade is
+   * resolved on document order at equal specificity. Written up where it belongs and it was
+   * measurably discarded; see the note beside `submit-back`'s root pair.
+   *
+   * The beats are the forward hop's, run the other way. On this pop the wizard's plate, body,
+   * progress bar, pasta and tomatoes are ALL new-only, so all of them are appended after
+   * `auth-result` and paint over an error card that is still fading until t=200 — the terms form
+   * ghosting through the mascot. So: the result card owns the first 180ms over its own colour
+   * ground, the ground crossfades back to white at 180, and the wizard arrives at 240. Three
+   * things that were racing now happen in order, in both directions.
+   *
+   * `animation-delay` alone, never the shorthand — the keyframes, durations and curves each of
+   * these already has are the right ones and are set above; only their start time is wrong.
+   */
+  :root[data-auth-nav='submit-back']::view-transition-new(wizard-body),
+  :root[data-auth-nav='submit-back']::view-transition-new(wizard-progress),
+  :root[data-auth-nav='submit-back']::view-transition-new(wizard-pasta),
+  :root[data-auth-nav='submit-back']::view-transition-new(wizard-tomatoes) {
+    animation-delay: 240ms;
+  }
 }
 
 /*
@@ -1197,20 +1438,41 @@
    * fallback is the centre, which is correct for a modal with no trigger to grow from.
    *
    * 0.96 rather than 0: nothing in the real world appears from nothing.
+   *
+   * `translate` and `scale`, the individual properties, NOT `transform: translate3d(…) scale(…)`
+   * — this was the last `transform` shorthand left on an interactive element in the app, and it
+   * is the shape this repo has already been bitten by twice (micro-motion.css documents both at
+   * length). `transform` is ONE property, so any class that also writes it on this element wins
+   * the whole declaration and takes the travel and the scale with it; the sheets are composed
+   * inside pages whose reveals write `transform: none`, which is exactly the collision that
+   * silently killed twenty hover lifts before. `translate` and `scale` compose in a fixed order
+   * and cannot be clobbered as a pair.
+   *
+   * The open state names BOTH longhands rather than writing `transform: none`, for the reason
+   * `.mm-sheet` records: `none` clears one property and so cannot strand anything, but it also
+   * clears a `-translate-x-1/2` a call site put on the sheet for LAYOUT (Tailwind v4 compiles
+   * that to the `translate` property), which is how a modal ends up centred going out and half a
+   * width off coming in. `toast.css` already uses this exact shape.
+   *
+   * `transform-origin` still applies — it governs `scale` and `rotate` as longhands too.
    */
   .auth-modal-sheet {
-    transform: translate3d(0, 12px, 0) scale(0.96);
+    translate: 0 12px;
+    scale: 0.96;
     transform-origin: var(--auth-origin-x, 50%) var(--auth-origin-y, 50%);
     transition:
       opacity 190ms var(--ease-out-auth),
-      transform 190ms var(--ease-out-auth);
+      translate 190ms var(--ease-out-auth),
+      scale 190ms var(--ease-out-auth);
   }
 
   .auth-modal-sheet[data-state='open'] {
-    transform: translate3d(0, 0, 0) scale(1);
+    translate: 0 0;
+    scale: 1;
     transition:
       opacity 300ms var(--ease-out-auth),
-      transform 300ms var(--ease-out-auth);
+      translate 300ms var(--ease-out-auth),
+      scale 300ms var(--ease-out-auth);
   }
 
   /*
@@ -1218,20 +1480,24 @@
    * what stops a large dialogue reading as one stiff plate. Delays only on the way in:
    * on the way out everything leaves together, immediately.
    */
+  /* `translate`, not the `transform` shorthand — same reason as the sheet above, and it matters
+     more here, not less: these regions are ordinary content boxes inside a page, so any one of
+     them could pick up a `.reveal` or a `-translate-x-1/2` from a call site, and `transform` is
+     the one property that would let that silently replace the stagger. */
   .auth-modal-part {
     opacity: 0;
-    transform: translate3d(0, 10px, 0);
+    translate: 0 10px;
     transition:
       opacity 160ms var(--ease-out-auth),
-      transform 160ms var(--ease-out-auth);
+      translate 160ms var(--ease-out-auth);
   }
 
   .auth-modal-sheet[data-state='open'] .auth-modal-part {
     opacity: 1;
-    transform: translate3d(0, 0, 0);
+    translate: 0 0;
     transition:
       opacity 280ms var(--ease-out-auth),
-      transform 280ms var(--ease-out-auth);
+      translate 280ms var(--ease-out-auth);
   }
 
   .auth-modal-sheet[data-state='open'] .auth-modal-part:nth-child(1) {
@@ -1257,12 +1523,16 @@
    * wrapper rather than its root, because the root also holds the `fixed` scrim and a
    * transformed ancestor would become that scrim's containing block.
    */
+  /* `scale`, not `transform: scale(…)`. This one is on the wizard's own content wrapper, which
+     is the element most likely to acquire a layout transform later, and the note above already
+     depends on it staying a transformed box for the scrim's containing block — `scale` keeps
+     that true while leaving `translate` free for whoever needs it. */
   .auth-recede {
-    transition: transform 300ms var(--ease-out-auth);
+    transition: scale 300ms var(--ease-out-auth);
   }
 
   .auth-recede[data-recede='true'] {
-    transform: scale(0.994);
+    scale: 0.994;
   }
 }
 
@@ -1296,6 +1566,35 @@
 .auth-check-path {
   stroke-dasharray: 16;
   animation: auth-check-draw 260ms var(--ease-out-auth) backwards;
+}
+
+/*
+ * The dashboard's status timeline gets the same tick, and this is the one screen in the flow
+ * where a drawn glyph is unambiguously right: the steps ARE the answer the team came for, they
+ * are read once per visit, and a green check that is simply already there says "a record
+ * exists" where one that draws says "this was completed".
+ *
+ * The glyph is Figma's `check_regular` and stays Figma's — it is a FILLED outline, not a
+ * stroke, so there is nothing on it to dash. The fill is revealed through a MASK instead: a
+ * two-segment spine down the middle of the tick, stroked 6 units wide (the glyph is ~2.4
+ * thick, and the round caps at width 6 cover its own rounded ends), with the dash travelling
+ * that spine. At `stroke-dashoffset: 0` the mask covers the whole glyph, so the resting frame
+ * is the export pixel for pixel — verified against the unmasked path at 20px and at 200px.
+ * `pathLength: 16` normalises the spine to the same 16 units `auth-check-draw` already walks,
+ * which is why this reuses that keyframe rather than adding a second one.
+ *
+ * The delay reads the rung the row is on (`--auth-rise-delay`, published by the `[data-rise]`
+ * ladder above) and adds 200ms, so each tick draws a beat into its own row's rise rather than
+ * every tick going off at once, and the whole timeline builds downward. The last row is on rung
+ * 7, so the last tick starts at 530ms and the panel has settled by 790ms.
+ *
+ * `backwards`, never `forwards`: the fill holds the empty frame through the delay and then lets
+ * go, leaving the element on the `stroke-dashoffset: 0` it renders with anyway.
+ */
+[data-auth-entrance] .auth-step-check {
+  stroke-dasharray: 16;
+  animation: auth-check-draw 260ms var(--ease-out-auth) calc(var(--auth-rise-delay, 0ms) + 200ms)
+    backwards;
 }
 
 /* ------------------------------------------------------- drop targets ---- */
@@ -1508,6 +1807,11 @@
     animation: none;
   }
 
+  /* the tick is simply there, fully drawn — `stroke-dashoffset: 0` is its resting value */
+  [data-auth-entrance] .auth-step-check {
+    animation: none;
+  }
+
   /*
    * The progress fill is a transition now, so `animation: none` no longer reaches it.
    * Cutting the transition lands each segment on its final scale immediately — filled
@@ -1526,11 +1830,33 @@
     animation-duration: 1ms !important;
   }
 
+  /*
+   * `hold`/`take` rather than `fade-out`/`fade-in`, and this is the reported overlap bug in its
+   * reduced-motion form rather than a stylistic preference. Measured on the frozen submit hop at
+   * 402 with `prefers-reduced-motion: reduce` emulated, when this pair was a plain symmetric
+   * cross-fade: at t=70 of 140 the terms step and the success card were BOTH fully legible on
+   * top of each other, AND the whole screen was pale — because overriding the entire `animation`
+   * shorthand with `!important` discards the UA's `-ua-mix-blend-mode-plus-lighter` companion
+   * (the frozen animation list under this query carried no `plus-lighter` entry at all, where
+   * the normal-motion list carries one per root snapshot), so two half-opaque white plates
+   * composited to a translucent one. That is indistinguishable from the complaint this whole
+   * file's submit choreography exists to fix, and reduced motion is not an excuse to ship it.
+   *
+   * These are the two keyframes the gate hop already uses for exactly this problem: the OLD
+   * snapshot holds at full opacity underneath while the new one comes up solid above it, and
+   * only once the new one is opaque does the old one retire, unseen. The union is opaque at
+   * every frame without needing a blend mode, so it does not matter that the shorthand drops
+   * one. Only one screen is ever legible.
+   *
+   * 220ms, and nothing travels, scales, turns or overshoots — pure opacity, which is what this
+   * query is for. `linear` on both: the samples in `hold`/`take` ARE the timing, and an eased
+   * fade is a motion cue in its own right.
+   */
   ::view-transition-old(*) {
-    animation: auth-fade-out 140ms linear both !important;
+    animation: auth-block-hold 220ms linear both !important;
   }
 
   ::view-transition-new(*) {
-    animation: auth-fade-in 140ms linear both !important;
+    animation: auth-block-take 220ms linear both !important;
   }
 }

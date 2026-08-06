@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import GoogleLogo from '../GoogleLogo'
+import { AuthTopBar } from '../AccountMenu'
 import { WizardBackdrop } from '../AuthBackdrop'
 import ScrollEdgeEffect from '../ScrollEdgeEffect'
 import { authLink, useAuthBackLink, useAuthNavigate } from './wizardNav'
@@ -60,9 +60,27 @@ export default function WizardShell({
     <div className="relative flex min-h-dvh flex-col overflow-clip bg-[#fefdfc]">
       <WizardBackdrop withTomatoes={withTomatoes} />
 
+      {/*
+       * ------------------------------------------------------------------ the page gutter
+       *
+       * `px-4 lg:px-0` had a hole in it exactly where the tablet band is. The column is capped
+       * at 1040, so a zero gutter is only safe once the viewport is 1040 + 2x24 wide — between
+       * 1024 and 1088 `lg:px-0` put BOTH white plates flush against the two edges of the screen
+       * with no gutter at all, and 1024 is a width people hold in their hands.
+       *
+       * `max-w-[1088px] px-6` fixes it without a breakpoint: 1088 is Figma's 1040 column plus its
+       * two phone gutters, so the plates are `min(1040, viewport - 48)` wide — continuous
+       * everywhere, exactly 1040 from 1088 up, and at 1440 inset by (1440-1088)/2 + 24 = 200,
+       * which is the 1440 frame's own side padding to the pixel.
+       *
+       * The other three lengths are two-anchor ramps: `1214:142` insets the card by 24 on all
+       * four sides of the 402 frame and leaves 24 between the top bar and the card, against
+       * 60 / 40 / 0 at 1440 (the card runs to the fold there, hence a bottom pad that ramps to
+       * exactly zero rather than a `lg:pb-0`).
+       */}
       <div
         data-recede={receded}
-        className="auth-recede relative z-10 mx-auto flex w-full max-w-[1040px] flex-1 flex-col gap-4 px-4 py-8 lg:gap-10 lg:px-0 lg:pt-15 lg:pb-0"
+        className="auth-recede relative z-10 mx-auto flex w-full max-w-[1088px] flex-1 flex-col gap-[calc(23.584px_+_16.416*var(--fl))] px-6 pt-[calc(23.06px_+_36.94*var(--fl))] pb-[calc(24.624px_-_24.624*var(--fl))]"
       >
         {/*
          * `auth-topbar` / `wizard-progress` / `wizard-body` are view-transition names
@@ -72,28 +90,17 @@ export default function WizardShell({
          * two controls sit in the same corner — so the account chip is one object for the
          * whole flow rather than one per screen.
          */}
-        <header className="auth-topbar flex items-center justify-between gap-4 rounded-[24px] bg-white p-4 shadow-soft lg:p-5">
-          <Link to="/" className="mm-press">
-            <img
-              src="/assets/figma/95f39e217dc710a779c3c0b6cf30b3a377d857f5.png"
-              alt="BangMod Hackathon 2026"
-              className="h-10 w-auto object-cover lg:h-[50px] lg:w-[222px]"
-            />
-          </Link>
-          <button
-            type="button"
-            className="mm-press flex items-center justify-center gap-4 rounded-[12px] border border-[#dcdcdc] bg-white py-3 pr-4 pl-5 text-lg leading-[1.4] transition-colors hover:border-brand-red lg:text-xl"
-          >
-            <GoogleLogo />
-            <span className="hidden sm:inline">ชื่อบัญชีผู้ใช้</span>
-            <img
-              src="/assets/figma/da1c84a7a51ab6256b69963fbe9c03c1607713d3.svg"
-              alt=""
-              aria-hidden
-              className="size-6"
-            />
-          </button>
-        </header>
+        {/*
+         * The plate itself now lives in components/AccountMenu.tsx, because Figma draws the
+         * same one on the gate and on the two result screens and it was written out three
+         * times — which is why the account chip was a dead `<button>` in all three copies.
+         * Every length it carried is preserved there, including the flat `p-5` (`1297:1453`
+         * insets its 40-tall logo by 20 on the phone frame as well as at 1440) and the two
+         * logo ramps; the plate's RADIUS is now a 20 → 24 ramp rather than the flat 24 that
+         * used to be here, which is a real mismatch with `1297:1453` and lands on 24.000 at
+         * 1440. See the notes on `PLATE_RADIUS` and `CHIP` in that file.
+         */}
+        <AuthTopBar className="auth-topbar" />
 
         {/*
          * The card's bottom padding is 0 because the action bar supplies it: Figma pins
@@ -107,16 +114,50 @@ export default function WizardShell({
          * is pinned (`animation-duration: 0s` on the group) so the form inside can snap
          * to the new step's height without hanging out of a plate still resizing.
          */}
-        <div className="auth-sheet flex flex-1 flex-col rounded-[24px] bg-white p-6 pb-0 shadow-soft lg:min-h-[832px] lg:p-10 lg:pb-0">
-          <div className="flex flex-1 flex-col gap-6 lg:gap-10">
+        {/*
+         * PADDING 20 @402 → 40 @1440, where this was 24 → 40. The old note cited `1297:1463`
+         * for the 24 and `1297:1463` is in fact 20 — as is every other phone card in the flow:
+         * `1214:187` (team), `1236:582` (advisor), `1243:1352` (entrant), `1243:2191` (terms).
+         * All five say 20; `708:1279` / `708:1374` / `708:1564` / `708:1976` all say 40. The
+         * action bar's own negative margin below is the same expression so the two cannot drift.
+         *
+         * RADIUS is a flat 24 and that is not a held 1440 value — the five phone cards and the
+         * four desktop ones are all `cornerRadius: 24`. (The phone PAGE frame `1214:157` and its
+         * top bar `1214:177` are 20, which is what the ramp on `AuthTopBar`'s plate is for; the
+         * form card is not.)
+         *
+         * GAP was `gap-6 lg:gap-10` — the two anchors held flat with a step at 1024, i.e. a hole
+         * in the tablet band of exactly the kind the gutter note above describes. Both ends are
+         * measured (24 on all five phone cards, 40 on all four desktop ones), so it ramps.
+         */}
+        <div className="auth-sheet flex flex-1 flex-col rounded-[24px] bg-white p-[calc(19.48px_+_20.52*var(--fl))] pb-0 shadow-soft lg:min-h-[832px] lg:pb-0">
+          <div className="flex flex-1 flex-col gap-[calc(23.584px_+_16.416*var(--fl))]">
             {/* title and crumbs sit flush in Figma — no gap between them */}
             <div className="flex flex-col items-start">
-              <h1 className="text-2xl leading-[1.4] font-semibold lg:text-[32px]">
+              {/* 24 @402 → 32 @1440, and SemiBold at both ends. Verified on all four steps at
+                  both anchors: `1214:189` / `1236:584` / `1243:1354` / `1243:2193` are 24/600 on
+                  a 34-tall box at 1.4, `708:1281` / `708:1376` / `708:1566` / `708:1978` are
+                  32/600 on 45. Nothing to change — recorded because the earlier pass set this
+                  before the rate limit and it was carried as unconfirmed. */}
+              <h1 className="text-[calc(23.792px_+_8.208*var(--fl))] leading-[1.4] font-semibold">
                 ลงทะเบียนเข้าแข่งขัน
               </h1>
+              {/*
+               * 14 @402 → 18 @1440, where this was `fl-18` — whose floor is 16, so the phone
+               * crumb rendered 2px over Figma. The 21-tall box the old note read as a 16 is
+               * 14 at Noto Sans Thai's own 1.5107 leading (21.15 / 14), not 16 at 1.3.
+               *
+               * Measured on all four steps at both anchors: `1214:191`…`1214:197`,
+               * `1236:586`…`1236:592`, `1243:1356`…`1243:1362`, `1243:2195`…`1243:2201` are all
+               * 14/400/21.15; `708:1283`…`708:1289`, `708:1378`…`708:1384`, `708:1568`…`708:1574`,
+               * `708:1980`…`708:1986` are all 18/400/27.2. Weight is Regular at BOTH anchors, so
+               * the absent weight class is the right answer and not an omission.
+               *
+               * `gap-2` stays flat: `1214:190` and `708:1282` are both 8.
+               */}
               <nav
                 aria-label="ขั้นตอน"
-                className="flex flex-wrap items-start gap-2 text-base leading-[normal] lg:text-lg"
+                className="flex flex-wrap items-start gap-2 text-[calc(13.896px_+_4.104*var(--fl))] leading-[normal]"
               >
                 {CRUMBS.map((crumb, i) => (
                   <span key={crumb} className="flex gap-2">
@@ -127,8 +168,17 @@ export default function WizardShell({
               </nav>
             </div>
 
+            {/*
+             * 6 tall on the 402 frames, 8 at 1440 — `h-2` was the 1440 value held flat.
+             * CONFIRMED on all four steps at both anchors: `1243:2154` (team), `1243:2147`
+             * (advisor), `1243:2140` (entrant), `1243:2202` (terms) are each 314x6 with `gap: 4`
+             * and `cornerRadius: 100`; `708:1290` / `708:1385` / `708:1575` / `708:1987` are each
+             * 960x8 with the same 4 and 100. So the height ramps and the gap and radius do not —
+             * `gap-1` and `rounded-[100px]` are both anchors, not one held flat. Segment fills
+             * are #e6e6e6 empty / #c0563e filled, and each segment is fully rounded.
+             */}
             <div
-              className="wizard-progress flex h-2 gap-1 overflow-hidden rounded-[100px]"
+              className="wizard-progress flex h-[calc(5.948px_+_2.052*var(--fl))] gap-1 overflow-hidden rounded-[100px]"
               role="progressbar"
               aria-valuenow={step}
               aria-valuemin={1}
@@ -161,7 +211,24 @@ export default function WizardShell({
             <div className="wizard-body flex flex-1 flex-col">{children}</div>
           </div>
 
-          <div className="mt-5 -mx-6 flex items-center justify-between gap-4 rounded-b-[24px] bg-white p-4 lg:-mx-10 lg:p-5">
+          {/*
+           * The bar cancels the card's side padding to sit on Figma's own 20 inset, so its
+           * negative margin has to BE the card's padding ramp rather than a `-mx-6 lg:-mx-10`
+           * pair that only agreed with it at two widths. Written as a negative inside the
+           * calc() rather than as Tailwind's `-mx-[…]` so the sign is in the value.
+           *
+           * `flex-wrap` is a safety net, not a layout: at 375 the terms step's pair is a 24px
+           * icon plus "ลงทะเบียนเข้าแข่งขัน", which is within a few px of the 293 this row has,
+           * and a wrap is a far better failure than a pill hanging out of the card.
+           */}
+          {/*
+           * The bar's OWN padding is a flat 20, not a 16 → 20 ramp: `1214:249` (team),
+           * `1297:103` (advisor), `1297:93` (entrant) and `1243:2371` (terms) all inset by 20 on
+           * the 402 frame, exactly as `708:1341` / `708:1527` / `708:1733` / `708:2011` do at
+           * 1440. The arithmetic confirms it twice over — the phone bar is 76 tall around a
+           * 36-tall pill (20 + 36 + 20) and the desktop bar 100 around a 60 (20 + 60 + 20).
+           */}
+          <div className="mt-5 mx-[calc(-19.48px_-_20.52*var(--fl))] flex flex-wrap items-center justify-between gap-4 rounded-b-[24px] bg-white p-5">
             {actions}
           </div>
         </div>
@@ -194,35 +261,116 @@ export default function WizardShell({
  * active:scale-[0.97]`, which is `mm-press` written by hand at a different duration to the
  * same gesture everywhere else in the app; the class is the one definition, at 110ms, and it
  * carries its own reduced-motion guard.
+ *
+ * WEIGHT — the one item this pass was sent to settle. `font-medium` (500) is CORRECT, and the
+ * suspicion that it was an outlier against the site's other red pills is wrong: the wizard pill
+ * is Medium at BOTH anchors, on eleven nodes, with no disagreement anywhere.
+ *
+ *   @1440  `708:1343` ถัดไป 20/500 · `708:2015` ย้อนกลับ 20/500 · `708:2017` submit 20/500
+ *          `708:1531` · `708:1533` · `708:1737` · `708:1739`  all 20/500
+ *   @402   `1214:251` ถัดไป 16/500 · `1243:2375` ย้อนกลับ 16/500 · `1243:2377` submit 16/500
+ *          `1297:107` · `1297:109` · `1297:1571` · `1297:1573`  all 16/500
+ *
+ * The brief's reading that the 402 pill is glyph-only and therefore has no phone anchor for the
+ * label holds for the two NAV pills, whose 36x36 box clips the label out — but the terms step's
+ * submit keeps its label on the phone frame (`1243:2376`, 166x38), so there IS a phone anchor and
+ * it says 500 too. Not a breakpoint, not a mismatch: one flat weight.
+ *
+ * TWO ANCHORS for the block padding, the gap and the label.
+ * Figma's phone action bar is a 36-tall pill — `1297:1568` / `1214:250` / `1243:2372` are 36x36
+ * with a 20 glyph on an 8 inset, `1243:2376` is 166x38 with a 22-tall label on a 16 — against
+ * `708:1342` / `708:2012`'s 60 with a 24 glyph on a 16/18 inset at 1440. So:
+ *
+ *   py     8 @402 → 16 @1440   (`py-4` was the whole 1440 inset on a 36-tall pill)
+ *   gap    8 @402 → 12 @1440   (see below)
+ *   label 16 @402 → 20 @1440   spelled out rather than left as `fl-20`
+ *
+ * GAP was `gap-3`, held flat on the reading that the phone pill has no label to space. Every one
+ * of the four phone pills declares `itemSpacing: 8` — including `1243:2376`, which does carry a
+ * label — against 12 on `708:1342` / `708:2012` / `708:2016`. So there are two anchors and it
+ * ramps. Below `sm` the nav pills are a single child and the value is inert; from `sm` up, and on
+ * the submit at every width, it is the real spacing.
+ *
+ * LABEL is written out because `fl-20`'s floor is 17, and 17 is not 16: the submit keeps its
+ * label at 402, so that floor was a visible 1px overshoot on the one pill that shows one down
+ * there. From `sm` up the two expressions agree to within 0.08px, so 1440 does not move.
+ *
+ * RADIUS is a flat 12 and that is both anchors, not one held: every pill above is `r: 12`.
  */
 const STEP_BUTTON =
-  'mm-press flex items-center justify-center gap-3 rounded-[12px] bg-brand-red py-4 text-lg leading-[1.4] font-medium text-white transition-opacity hover:opacity-90 lg:text-xl'
+  'mm-press flex items-center justify-center gap-[calc(7.896px_+_4.104*var(--fl))] rounded-[12px] bg-brand-red py-[calc(7.792px_+_8.208*var(--fl))] text-[calc(15.896px_+_4.104*var(--fl))] leading-[1.4] font-medium text-white transition-opacity hover:opacity-90'
+
+/**
+ * The arrow the two navigation pills carry: 20 on the 402 frames (`1297:1569` back,
+ * `1214:252` next, `1243:2373` / `1243:2378` on the terms step), 24 at 1440 (`708:2013`,
+ * `708:1344`). One ramp, exact at both ends — RE-CONFIRMED on all four phone frames.
+ *
+ * This is the item the previous pass named and left: "24px glyphs (chevrons, arrows, back
+ * caret) are drawn at 20 on the 402 frames; left at 24". Below `sm` these pills are the glyph
+ * alone, so a 24 mark in a box Figma draws at 36 was the whole control being 4px oversize on
+ * every axis at once.
+ *
+ * BOX AND GLYPH both scale, which is the check the `inset` note in the brief exists for: the two
+ * assets are `viewBox="0 0 24 24"` with a matching intrinsic `width`/`height`, and `size-*` sets
+ * BOTH axes on the `<img>` — so the intrinsic 24 is overridden rather than winning, and the mark
+ * inside redraws at the ramped size instead of being clipped. Figma agrees: the vector is 6x11 in
+ * the 20 box (`1297:1570`) and 8x13 in the 24 (`708:1345`), i.e. it scales with its frame.
+ */
+const STEP_ARROW = 'size-[calc(19.896px_+_4.104*var(--fl))]'
+
+/**
+ * The icon-only pills' own inset: 8 on the 402 frames → 16 at 1440. Only in force below `sm`,
+ * where the label is hidden and `px` is symmetric; from `sm` up each call site names Figma's
+ * asymmetric pair and this is overridden.
+ *
+ * CONFIRMED at both anchors. `1297:1568` / `1214:250` / `1243:2372` are `padding: 8` on all four
+ * sides; at 1440 Figma splits them around the glyph, and each call site's `sm:` pair is that
+ * split to the pixel — `708:2012` back is `pl 16 / pr 24`, `708:1342` next is `pl 24 / pr 16`.
+ */
+const STEP_PAD = 'px-[calc(7.792px_+_8.208*var(--fl))]'
+
+/**
+ * Below `sm` the two navigation pills are the glyph alone, which is what the phone frame
+ * draws: `1214:157` closes the team step with a single round red button carrying nothing but
+ * the arrow. It is also what makes the row fit — a labelled pair plus the terms step's
+ * "ลงทะเบียนเข้าแข่งขัน" is wider than a 375 phone's card. `aria-label` carries the name the
+ * label used to, and the label itself is still in the DOM from `sm` up.
+ */
+const STEP_GLYPH = 'hidden sm:inline'
 
 export function BackButton({ to }: { to: string }) {
   const authBack = useAuthBackLink()
 
   return (
-    <Link {...authBack(to, 'back')} className={`${STEP_BUTTON} pr-6 pl-4`}>
+    <Link
+      {...authBack(to, 'back')}
+      aria-label="ย้อนกลับ"
+      className={`${STEP_BUTTON} ${STEP_PAD} sm:pr-6 sm:pl-4`}
+    >
       <img
         src="/assets/figma/41418d29fd1f773c0f14bc317b19bd65b6f49ee8.svg"
         alt=""
         aria-hidden
-        className="size-6"
+        className={STEP_ARROW}
       />
-      ย้อนกลับ
+      <span className={STEP_GLYPH}>ย้อนกลับ</span>
     </Link>
   )
 }
 
 export function NextButton({ to, label = 'ถัดไป' }: { to: string; label?: string }) {
   return (
-    <Link {...authLink(to, 'forward')} className={`${STEP_BUTTON} ml-auto pr-4 pl-6`}>
-      {label}
+    <Link
+      {...authLink(to, 'forward')}
+      aria-label={label}
+      className={`${STEP_BUTTON} ${STEP_PAD} ml-auto sm:pr-4 sm:pl-6`}
+    >
+      <span className={STEP_GLYPH}>{label}</span>
       <img
         src="/assets/figma/a275512325b630305418a611fed5319ba90acfc8.svg"
         alt=""
         aria-hidden
-        className="size-6"
+        className={STEP_ARROW}
       />
     </Link>
   )
@@ -257,7 +405,17 @@ export function SubmitButton({ to, label }: { to: string; label: string }) {
         setBusy(true)
         go(to, 'submit')
       }}
-      className={`auth-submit relative ${STEP_BUTTON} ml-auto px-6`}
+      /* keeps its label at every width — it is the commit — so it takes the tighter phone
+         padding instead, which is what buys the row its last 16px at 375.
+         16 → 24 rather than `STEP_PAD`'s 8 → 16: `1243:2376` is the one pill on the phone
+         frame that keeps its label, and it insets it by 16 where the icon-only pair inset
+         their glyph by 8. `sm:px-6` is Figma's own 24 (`708:2016`) and is unchanged.
+         CONFIRMED at both anchors; the citation moves from `1297:1572` to `1243:2376` because
+         the `1297:14xx` run belongs to the Privacy Policy Modal frame (`1297:1433`), which draws
+         this step UNDER a scrim, and `1243:2161` is the terms step's own 402 frame. The two agree
+         on every length here. `1243:2376` is 166x38 = 16 + 134 + 8 + 20 clipped, py 8, r 12;
+         `708:2016` is 216x60 = 24 + 168 + 24, py 16, r 12. */
+      className={`auth-submit relative ${STEP_BUTTON} ml-auto px-[calc(15.792px_+_8.208*var(--fl))] sm:px-6`}
     >
       <span className="auth-submit-label">{label}</span>
       <span
