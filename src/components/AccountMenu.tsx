@@ -105,9 +105,20 @@ const PLATE_RADIUS = 'rounded-[calc(19.896px_+_4.104*var(--fl))]'
  * `hover:opacity-90`s were before that note existed. The radius therefore snaps while the box
  * unfolds around it, which at 220ms is not perceptible. Background-color IS in `.mm-press`'s
  * own list, so the wash is already timed at `--mm-fast`.
+ *
+ * `py` is 8 → 11, and the 11 is arithmetic rather than a transcription. Figma's chip `1297:558`
+ * is 52 tall at 1440; ours measured 54, because 12 of padding either side of a 28px line box
+ * plus the 1px border twice is 54. 11 gives 11 + 28 + 11 + 2 = 52 exactly. The low anchor is
+ * unchanged at 8.000 (7.922 + 3.078 x 0.02535211), so the 402 chip stays 38 and its plate stays
+ * at Figma's 80.
+ *
+ * This 2px was not cosmetic: the top bar is `p-5` around its tallest child, so a 54 chip made
+ * the bar 94 where Figma draws 92, and every page that hangs off the bar inherited the error —
+ * it is the whole reason the registration result card measured `top: 180 / height: 844` against
+ * Figma's `178 / 846`. The card was already correct; the bar above it was pushing it down.
  */
 const CHIP =
-  'mm-press flex items-center justify-center gap-[calc(7.792px_+_8.208*var(--fl))] rounded-[12px] border border-[#dcdcdc] bg-white py-[calc(7.896px_+_4.104*var(--fl))] pr-4 pl-5 fl-20 leading-[1.4] transition-colors hover:bg-black/5 data-[open=true]:bg-[#f7f7f7] sm:data-[open=true]:rounded-t-[16px] sm:data-[open=true]:rounded-b-none'
+  'mm-press flex items-center justify-center gap-[calc(7.792px_+_8.208*var(--fl))] rounded-[12px] border border-[#dcdcdc] bg-white py-[calc(7.922px_+_3.078*var(--fl))] pr-4 pl-5 fl-20 leading-[1.4] transition-colors hover:bg-black/5 data-[open=true]:bg-[#f7f7f7] sm:data-[open=true]:rounded-t-[16px] sm:data-[open=true]:rounded-b-none'
 
 /**
  * The panel's inline padding IS the chip's, flat 20 / 16, for the alignment reason above: from

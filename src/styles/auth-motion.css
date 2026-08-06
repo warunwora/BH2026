@@ -808,15 +808,19 @@
     animation: auth-fade-in 380ms var(--ease-out-auth) 240ms both;
   }
 
-  :root[data-auth-nav='submit-back']::view-transition-new(wizard-body) {
-    animation: wizard-enter-back 300ms var(--ease-out-auth) 240ms both;
-  }
-
-  :root[data-auth-nav='submit-back']::view-transition-new(wizard-progress),
-  :root[data-auth-nav='submit-back']::view-transition-new(wizard-pasta),
-  :root[data-auth-nav='submit-back']::view-transition-new(wizard-tomatoes) {
-    animation-delay: 240ms;
-  }
+  /*
+   * The wizard's own four names are deliberately NOT delayed here. Their `animation`
+   * shorthands live in the wizard block further down the file, and a shorthand resets
+   * `animation-delay` to 0 — so a delay written at this point in the cascade is discarded by a
+   * rule of equal specificity 400 lines later. That is not a hypothesis: measured on the frozen
+   * pop at 402, `new(wizard-body)` and `new(wizard-pasta)` both reported `delay: 0` while
+   * `new(wizard-progress)` (the one name with no later shorthand) correctly reported 240. So the
+   * reverse hop was still racing — the form and the pasta arrived from t=0 over an error card
+   * that fades until t=200, which is the same ghosting the forward hop had.
+   *
+   * The four of them are retimed at the very end of the wizard block instead, where they are
+   * last in the cascade and win. Search `SERIALISE THE POP`.
+   */
 
   /*
    * The account chip and the "หน้าหลัก" link are the same two controls in the same
@@ -1212,6 +1216,30 @@
   :root[data-auth-nav='submit-back']::view-transition-new(wizard-body) {
     animation: wizard-enter-back 300ms var(--ease-out-auth) both;
   }
+
+  /*
+   * SERIALISE THE POP — the reverse of the submit hop, and the mirror of the delays in the auth
+   * block above. It has to be HERE, after every `animation` shorthand that names these four
+   * pseudo-elements, because a shorthand resets `animation-delay` to 0 and the cascade is
+   * resolved on document order at equal specificity. Written up where it belongs and it was
+   * measurably discarded; see the note beside `submit-back`'s root pair.
+   *
+   * The beats are the forward hop's, run the other way. On this pop the wizard's plate, body,
+   * progress bar, pasta and tomatoes are ALL new-only, so all of them are appended after
+   * `auth-result` and paint over an error card that is still fading until t=200 — the terms form
+   * ghosting through the mascot. So: the result card owns the first 180ms over its own colour
+   * ground, the ground crossfades back to white at 180, and the wizard arrives at 240. Three
+   * things that were racing now happen in order, in both directions.
+   *
+   * `animation-delay` alone, never the shorthand — the keyframes, durations and curves each of
+   * these already has are the right ones and are set above; only their start time is wrong.
+   */
+  :root[data-auth-nav='submit-back']::view-transition-new(wizard-body),
+  :root[data-auth-nav='submit-back']::view-transition-new(wizard-progress),
+  :root[data-auth-nav='submit-back']::view-transition-new(wizard-pasta),
+  :root[data-auth-nav='submit-back']::view-transition-new(wizard-tomatoes) {
+    animation-delay: 240ms;
+  }
 }
 
 /*
@@ -1410,20 +1438,41 @@
    * fallback is the centre, which is correct for a modal with no trigger to grow from.
    *
    * 0.96 rather than 0: nothing in the real world appears from nothing.
+   *
+   * `translate` and `scale`, the individual properties, NOT `transform: translate3d(…) scale(…)`
+   * — this was the last `transform` shorthand left on an interactive element in the app, and it
+   * is the shape this repo has already been bitten by twice (micro-motion.css documents both at
+   * length). `transform` is ONE property, so any class that also writes it on this element wins
+   * the whole declaration and takes the travel and the scale with it; the sheets are composed
+   * inside pages whose reveals write `transform: none`, which is exactly the collision that
+   * silently killed twenty hover lifts before. `translate` and `scale` compose in a fixed order
+   * and cannot be clobbered as a pair.
+   *
+   * The open state names BOTH longhands rather than writing `transform: none`, for the reason
+   * `.mm-sheet` records: `none` clears one property and so cannot strand anything, but it also
+   * clears a `-translate-x-1/2` a call site put on the sheet for LAYOUT (Tailwind v4 compiles
+   * that to the `translate` property), which is how a modal ends up centred going out and half a
+   * width off coming in. `toast.css` already uses this exact shape.
+   *
+   * `transform-origin` still applies — it governs `scale` and `rotate` as longhands too.
    */
   .auth-modal-sheet {
-    transform: translate3d(0, 12px, 0) scale(0.96);
+    translate: 0 12px;
+    scale: 0.96;
     transform-origin: var(--auth-origin-x, 50%) var(--auth-origin-y, 50%);
     transition:
       opacity 190ms var(--ease-out-auth),
-      transform 190ms var(--ease-out-auth);
+      translate 190ms var(--ease-out-auth),
+      scale 190ms var(--ease-out-auth);
   }
 
   .auth-modal-sheet[data-state='open'] {
-    transform: translate3d(0, 0, 0) scale(1);
+    translate: 0 0;
+    scale: 1;
     transition:
       opacity 300ms var(--ease-out-auth),
-      transform 300ms var(--ease-out-auth);
+      translate 300ms var(--ease-out-auth),
+      scale 300ms var(--ease-out-auth);
   }
 
   /*
@@ -1431,20 +1480,24 @@
    * what stops a large dialogue reading as one stiff plate. Delays only on the way in:
    * on the way out everything leaves together, immediately.
    */
+  /* `translate`, not the `transform` shorthand — same reason as the sheet above, and it matters
+     more here, not less: these regions are ordinary content boxes inside a page, so any one of
+     them could pick up a `.reveal` or a `-translate-x-1/2` from a call site, and `transform` is
+     the one property that would let that silently replace the stagger. */
   .auth-modal-part {
     opacity: 0;
-    transform: translate3d(0, 10px, 0);
+    translate: 0 10px;
     transition:
       opacity 160ms var(--ease-out-auth),
-      transform 160ms var(--ease-out-auth);
+      translate 160ms var(--ease-out-auth);
   }
 
   .auth-modal-sheet[data-state='open'] .auth-modal-part {
     opacity: 1;
-    transform: translate3d(0, 0, 0);
+    translate: 0 0;
     transition:
       opacity 280ms var(--ease-out-auth),
-      transform 280ms var(--ease-out-auth);
+      translate 280ms var(--ease-out-auth);
   }
 
   .auth-modal-sheet[data-state='open'] .auth-modal-part:nth-child(1) {
@@ -1470,12 +1523,16 @@
    * wrapper rather than its root, because the root also holds the `fixed` scrim and a
    * transformed ancestor would become that scrim's containing block.
    */
+  /* `scale`, not `transform: scale(…)`. This one is on the wizard's own content wrapper, which
+     is the element most likely to acquire a layout transform later, and the note above already
+     depends on it staying a transformed box for the scrim's containing block — `scale` keeps
+     that true while leaving `translate` free for whoever needs it. */
   .auth-recede {
-    transition: transform 300ms var(--ease-out-auth);
+    transition: scale 300ms var(--ease-out-auth);
   }
 
   .auth-recede[data-recede='true'] {
-    transform: scale(0.994);
+    scale: 0.994;
   }
 }
 
@@ -1773,11 +1830,33 @@
     animation-duration: 1ms !important;
   }
 
+  /*
+   * `hold`/`take` rather than `fade-out`/`fade-in`, and this is the reported overlap bug in its
+   * reduced-motion form rather than a stylistic preference. Measured on the frozen submit hop at
+   * 402 with `prefers-reduced-motion: reduce` emulated, when this pair was a plain symmetric
+   * cross-fade: at t=70 of 140 the terms step and the success card were BOTH fully legible on
+   * top of each other, AND the whole screen was pale — because overriding the entire `animation`
+   * shorthand with `!important` discards the UA's `-ua-mix-blend-mode-plus-lighter` companion
+   * (the frozen animation list under this query carried no `plus-lighter` entry at all, where
+   * the normal-motion list carries one per root snapshot), so two half-opaque white plates
+   * composited to a translucent one. That is indistinguishable from the complaint this whole
+   * file's submit choreography exists to fix, and reduced motion is not an excuse to ship it.
+   *
+   * These are the two keyframes the gate hop already uses for exactly this problem: the OLD
+   * snapshot holds at full opacity underneath while the new one comes up solid above it, and
+   * only once the new one is opaque does the old one retire, unseen. The union is opaque at
+   * every frame without needing a blend mode, so it does not matter that the shorthand drops
+   * one. Only one screen is ever legible.
+   *
+   * 220ms, and nothing travels, scales, turns or overshoots — pure opacity, which is what this
+   * query is for. `linear` on both: the samples in `hold`/`take` ARE the timing, and an eased
+   * fade is a motion cue in its own right.
+   */
   ::view-transition-old(*) {
-    animation: auth-fade-out 140ms linear both !important;
+    animation: auth-block-hold 220ms linear both !important;
   }
 
   ::view-transition-new(*) {
-    animation: auth-fade-in 140ms linear both !important;
+    animation: auth-block-take 220ms linear both !important;
   }
 }

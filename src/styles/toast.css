@@ -172,6 +172,11 @@
   overflow: clip;
 }
 
+/* The grid item's automatic minimum size, zeroed so the `0fr` track can actually reach 0.
+   This zeroes the item's CONTENT box only — its padding and border still contribute to the
+   border-box minimum, which is why the 12 gap lives on a child of this element rather than on
+   it: measured, a 12px `padding-top` here held the closed track at `12px` and left every
+   settled card 71.27 tall against Figma's 59. See the note at the row in Toast.tsx. */
 .toast-progress > * {
   min-height: 0;
 }

@@ -290,35 +290,47 @@ function ToastCard({ toast, onDismiss }: { toast: ToastModel; onDismiss: () => v
        * Rendered in every state, not just the two that show it — an element that is only
        * mounted when it is needed has nothing to collapse FROM, and the height would snap.
        *
-       * `min-h-0` is load-bearing and it is a FIX. toast.css collapses this row with
-       * `grid-template-rows: 0fr` and gives the grid ITEM `min-height: 0` — but this element is
-       * itself a flex item of the card's column, where `min-height: auto` floors it at its own
-       * min-content height. That is 12px: the track resolved to 0, and the `pt-3` below survived
-       * it. Measured at 375, a settled card was 71.27 tall (`grid-template-rows` computing to
-       * `12px`, not `0px`) against the 59 that `1359:1117`, `1359:1161` and `1359:1185` all draw,
-       * so the collapse was only ever removing the 6px bar instead of the 18 the note above
-       * claims. With the floor gone the row collapses to 0 and the three settled frames measure
-       * 59.29; the two 77-tall transfer frames are unaffected, since an open row is sized by its
-       * content either way.
+       * THREE elements, and the middle one is a FIX rather than a wrapper for its own sake.
+       *
+       * `min-h-0` on the row is necessary — this element is a flex item of the card's column,
+       * where `min-height: auto` would floor it at its own min-content height — but it was not
+       * SUFFICIENT, and the difference was measured: at 375 a settled card was 71.27 tall with
+       * `grid-template-rows` computing to `12px`, against the 59 that `1359:1117`, `1359:1161`
+       * and `1359:1185` all draw. The collapse was removing the 6px bar and nothing else, i.e.
+       * 6 of the 18 the note above claims.
+       *
+       * The floor was the grid ITEM's own `padding-top`. `min-height: 0` (toast.css,
+       * `.toast-progress > *`) zeroes the item's CONTENT box; its padding still contributes to
+       * the border-box minimum, so a `0fr` track containing a 12px-padded item resolves to
+       * 12px, not 0. Proven both ways in the browser: clearing that padding took the track to
+       * `0px` and the card to 59.27, and moving it onto an inner element did the same while
+       * leaving the open row at `18px` / 77.27.
+       *
+       * So the grid item now carries nothing but the box, and the 12 gap lives one level in.
+       * It still belongs INSIDE the collapsing row rather than on the card's flex `gap`, for
+       * the reason the note above gives — a `gap` does not collapse with its item — and the
+       * row's `overflow: clip` is what hides the padded child while the track is at 0.
        */}
       <div className="toast-progress min-h-0" data-open={transferring}>
-        <div className="pt-3">
-          <div
-            role="progressbar"
-            aria-label={`ความคืบหน้าการอัปโหลด ${name}`}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(ratio * 100)}
-            /* the row is always mounted so it has something to collapse FROM, but a bar that
-               is closed is not a bar — hidden from the tree so a settled card does not report
-               a stale 100% to a screen reader that has no way to see it is gone */
-            aria-hidden={!transferring}
-            className="h-[6px] w-full overflow-clip rounded-full bg-[#f7f7f7]"
-          >
+        <div>
+          <div className="pt-3">
             <div
-              className="toast-fill h-full w-full rounded-full bg-[var(--toast-accent)]"
-              style={{ scale: `${ratio} 1` }}
-            />
+              role="progressbar"
+              aria-label={`ความคืบหน้าการอัปโหลด ${name}`}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(ratio * 100)}
+              /* the row is always mounted so it has something to collapse FROM, but a bar that
+                 is closed is not a bar — hidden from the tree so a settled card does not report
+                 a stale 100% to a screen reader that has no way to see it is gone */
+              aria-hidden={!transferring}
+              className="h-[6px] w-full overflow-clip rounded-full bg-[#f7f7f7]"
+            >
+              <div
+                className="toast-fill h-full w-full rounded-full bg-[var(--toast-accent)]"
+                style={{ scale: `${ratio} 1` }}
+              />
+            </div>
           </div>
         </div>
       </div>

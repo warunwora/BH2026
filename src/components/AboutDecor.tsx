@@ -49,7 +49,9 @@ const GARLIC = `${A}3762ab86266f19ae60ffdbc35a12c302cdeaeaae.png`
 const POT_WAVE = `${A}04e4ea7c8b321468519b19736f247ed81b6e13b4.svg`
 const TOMATO_WAVE = `${A}0bfef7e400c4e3e40a9a5e579a3bfb301e852a4d.svg`
 const GARLIC_WAVE = `${A}1929430b7343966fe082e8a4e52d59eeeeca1c68.svg`
-const CONTACT_BAND = `${A}7b1205541033ca44bebf6de0974444d5c89fc456.svg`
+/* No `CONTACT_BAND` here any more. `7b1205541033ca44bebf…svg` is a byte-identical second
+   export of the cream field `935:1125` that `FaqSection` already paints from its own asset
+   (`5b4f0c1a…svg`); this canvas was drawing a duplicate of it. See the note in `Canvas`. */
 const WASH = `${A}31e583ef33f9b578ae1882798097740e00a4a0bf.svg`
 
 /**
@@ -856,6 +858,10 @@ function Narrow() {
 }
 
 export function AboutDecor() {
+  /* The FAQ section's measured box — the anchor for the garlic band below, and the reason the
+     cream field is no longer painted on this canvas at all. See the notes inside `Canvas`. */
+  const faq = useSectionAnchor('faq')
+
   return (
     <Canvas
       narrow={
@@ -871,28 +877,39 @@ export function AboutDecor() {
       <Props items={POTS} x={1031} y={4581} />
       <Props items={TOMATOES} x={-149.69} y={4515.094} />
       {/*
-       * "Vector Shape" (935:1125) — the #FFEAB4 field behind the FAQ, whose curved bottom
-       * edge is what the contact section is drawn against and what the garlic heap rides.
-       * Without it the FAQ's own flat band just stopped dead across the full width.
+       * ------------------------------------------- the cream field is NOT painted here
        *
-       * 3023 wide against a 1440 canvas is deliberate: only the middle third is ever on
-       * screen, and it is the curve that has to land, not the box.
+       * "Vector Shape" (935:1125), the #FFEAB4 field behind the FAQ, used to be an `<img>`
+       * right here, hard-pinned at `left: -794, top: 2332` — Figma's own page coordinates for
+       * it. It has been REMOVED, because `FaqSection` paints the same node itself, at every
+       * width, anchored to its own section box. Two copies of one node were being drawn.
        *
-       * `get_metadata` reports y = 3495, which is 1163 — exactly one height — too low: the
-       * node is flipped, so the y it gives is the transformed corner, the same trap the
-       * rotated garlic frames spring. The real box top is 3495 − 1163. Checked against the
-       * render of the parent frame, where the band runs from just under the Codern card to
-       * the middle of the garlic's beige blob.
+       * The two did not coincide, and could not: this canvas pins to the 1440 FRAME's y
+       * (2332), while the field belongs to the FAQ SECTION, which starts at a measured 2209.2
+       * — every section above it is shorter than Figma's because the type ladder is tighter
+       * and the accordion ships collapsed. So from 1440 up the band was painted twice, 152.8px
+       * apart, and the doubled curve is the "พื้นหลังตรงนี้ยังมั่ว ๆ" that was reported twice:
+       * the lower copy's bottom edge reached page 3495 and put cream behind the `04` /
+       * ติดต่อทีมงาน heading, which Figma draws on white.
        *
-       * Painted here, before the garlic and its blob, because the frame paints it under both.
+       * `Narrow` below 1440 had already reached this conclusion in its own header note — "the
+       * #FFEAB4 field behind the FAQ is deliberately not here: FaqSection paints that field
+       * itself, at every width, centred on its own box — which is a better anchor for it than
+       * anything this canvas could offer". That reasoning is not width-dependent; this branch
+       * simply had not been brought in line with it. Now both branches agree, and the band is
+       * continuous across the 1440 boundary instead of gaining a second copy at it.
        */}
-      <img
-        src={CONTACT_BAND}
-        alt=""
-        className="absolute max-w-none"
-        style={{ left: -794, top: 2332, width: 3023, height: 1163 }}
-      />
-      <GarlicBand x={867} y={3196} />
+      {/*
+       * The garlic band rides the cream field's curved bottom edge, so it has to be anchored
+       * to whatever the field is anchored to — the MEASURED FAQ box, exactly as `Narrow` does
+       * it. It was `y={3196}`, Figma's page coordinate, which is the pin that only agreed with
+       * the (now removed) absolutely-pinned field.
+       *
+       * 1440 does not move: at 1440 the FAQ box measures top 2209.2, height 994.8, so
+       * 2209.2 + 0.9919 * 994.8 = 3195.9 — Figma's 3196 to a tenth of a pixel. The same
+       * fraction is what `Narrow` uses, so the garlic no longer jumps at the breakpoint.
+       */}
+      {faq && <GarlicBand x={867} y={faq.top + 0.9919 * faq.height} />}
     </Canvas>
   )
 }

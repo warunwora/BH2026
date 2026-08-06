@@ -173,10 +173,20 @@ export default function NotFound() {
         </div>
       </div>
 
-      {/* The glyph row is the only thing that says "404" and it is `aria-hidden` artwork, so
-          the code is spelled out for a screen reader. It used to sit inside the desktop frame,
-          which meant a phone was told nothing at all about what page it had landed on. */}
-      <span className="sr-only">404</span>
+      {/*
+       * The glyph row is the only thing that says "404" and it is `aria-hidden` artwork, so
+       * the code is spelled out for a screen reader. It used to sit inside the desktop frame,
+       * which meant a phone was told nothing at all about what page it had landed on.
+       *
+       * It is the page's `<h1>`, and it is `sr-only` rather than a promoted visible element
+       * because this page draws its copy TWICE — the `lg:block` desktop frame and the
+       * `lg:hidden` stack below it are both in the DOM at all times, only one of them
+       * displayed. Promoting either apology paragraph would therefore either ship two `<h1>`s
+       * or leave the other breakpoint with none. This node already existed and already carried
+       * the page's identity, so it becomes the heading and nothing else moves: `.sr-only` is
+       * absolutely positioned, so the tag change costs no layout and no type.
+       */}
+      <h1 className="sr-only">404</h1>
 
       {/* desktop: the exact 1440x1024 frame */}
       <div className="relative z-10 hidden h-[1024px] lg:block">

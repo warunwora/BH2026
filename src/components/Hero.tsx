@@ -23,6 +23,23 @@ export default function Hero() {
         className={`relative z-10 mx-auto flex w-full max-w-[1200px] flex-col items-center text-center ${content.cls}`}
       >
         {/*
+         * The home page's `<h1>`, and it is `sr-only` on purpose.
+         *
+         * The masthead below IS the page's title, but it is drawn as artwork — three numeral
+         * vectors, a mascot and two wordmark SVGs — and it exists twice in the DOM at once
+         * (`StackedLockup` under `md`, `WideLockup` from `md`, one of them `display:none`).
+         * Wrapping either one would ship a second `<h1>` on the other breakpoint, and wrapping
+         * the shared box would put a heading around a box whose aspect ratio and max-width are
+         * measured against `1190:672` / `935:451` — the most pinned geometry on the site.
+         *
+         * So the heading is a text-only sibling instead. `.sr-only` is absolutely positioned,
+         * so it leaves the flex flow entirely and the column's first laid-out child is still
+         * the lockup: no gap, no reflow, nothing measured moves. The string is the lockup's own
+         * content, not new copy.
+         */}
+        <h1 className="sr-only">BangMod Hackathon 2026</h1>
+
+        {/*
          * One box, two aspect ratios and two max-widths. The arrangement itself switches at
          * `md` — 1440's `935:451` is a wide row, 402's `1190:672` a stacked block, which is a
          * composition change and not a scale, so it cannot be a ramp. Both compositions now

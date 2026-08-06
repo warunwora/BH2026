@@ -6,10 +6,22 @@ import { NAV_LINKS } from '../data'
 /** Past this many px the nav is over content rather than over the top of the page. */
 const SCROLLED_AT = 24
 
-/** `md` — the one width where the menu stops existing (both the toggle and the panel are
- *  `md:hidden`). Kept as a constant because JS has to agree with the class for the open
- *  state not to survive a resize past the breakpoint. */
-const MENU_GONE_AT = '(min-width: 48rem)'
+/** `lg` — the one width where the menu stops existing (both the toggle and the panel are
+ *  `lg:hidden`). Kept as a constant because JS has to agree with the class for the open
+ *  state not to survive a resize past the breakpoint.
+ *
+ *  It was `md` (768), and moving it to `lg` (1024) fixes two things that were one bug.
+ *
+ *  1. THE DUPLICATE REGISTER BUTTON. The pill's own CTA was `sm:block` (640 up) while the
+ *     panel — which carries its own full-width CTA, per Figma `1341:333` — ran to `md`. So
+ *     every width from 640 to 767 drew BOTH: one beside the close glyph and one across the
+ *     bottom of the open panel. The two controls are the same control at two sizes, so the
+ *     breakpoint that reveals one has to be the breakpoint that retires the other, and now
+ *     there is a single number for it.
+ *  2. THE CRAMPED DESKTOP ROW. At 768 the horizontal row has to seat a 178px wordmark, three
+ *     Thai links and a 200px pill inside a 708px pill, which leaves the links touching. Below
+ *     1024 the menu is simply the better layout — which is what the user asked for. */
+const MENU_GONE_AT = '(min-width: 64rem)'
 
 /**
  * The four things that arrive when the block unfolds: three links and the register button.
@@ -151,7 +163,7 @@ export default function Navbar() {
    * decides: only move focus if it was inside the thing being closed.
    *
    * RESIZE past `md`, because `open` is React state and the breakpoint is CSS. Widening the
-   * window with the menu open hides the panel and the toggle (both `md:hidden`) while the
+   * window with the menu open hides the panel and the toggle (both `lg:hidden`) while the
    * state stays true, so narrowing again would spring the menu open unprompted. `matchMedia`
    * rather than a resize listener: it fires once at the crossing instead of once a frame.
    */
@@ -244,8 +256,12 @@ export default function Navbar() {
        * as exactly 36. Declaring the rendered value is what keeps the interpolation monotone —
        * tweening 100 → 24 while the height goes 72 → 303 raises the clamp ceiling faster than
        * the radius falls, and the corners visibly balloon to ~62 halfway through before coming
-       * back. `md:rounded-[100px]` pins the desktop pill to its existing declaration, so nothing
-       * at or above 768 changes by a pixel either way.
+       * back. `lg:rounded-[100px]` pins the desktop pill to its existing declaration, so nothing
+       * at or above 1024 changes by a pixel either way — and 1024 rather than 768 because that is
+       * where the menu now stops existing (see `MENU_GONE_AT`). The radius has to switch on the
+       * same breakpoint as the layout it belongs to: leaving it at `md` gave 768..1023 a 100px
+       * desktop pill that still opened into a menu, so the corners snapped from 100 to 24 with no
+       * closed-state 36 to travel from.
        *
        * The radius TRANSITION is not declared here, deliberately. `.site-nav { transition: … }`
        * in micro-motion.css is UNLAYERED, and an unlayered declaration beats a layered one
@@ -257,7 +273,7 @@ export default function Navbar() {
        * pill's transitions, and no `!important` needed to reach it.
        */}
       <nav
-        className={`site-nav pointer-events-auto relative mx-auto max-w-[1320px] bg-white py-4 pr-4 pl-[clamp(16px,2.3121387vw_+_6.7052023px,40px)] shadow-soft md:rounded-[100px] ${
+        className={`site-nav pointer-events-auto relative mx-auto max-w-[1320px] bg-white py-4 pr-4 pl-[clamp(16px,2.3121387vw_+_6.7052023px,40px)] shadow-soft lg:rounded-[100px] ${
           open ? 'rounded-[24px]' : 'rounded-[36px]'
         }`}
       >
@@ -308,7 +324,7 @@ export default function Navbar() {
            * 97.33 / 80 at exactly 1440. The switch is a composition change at the breakpoint
            * where Figma's frame starts, like the hero lockup's own switch at `md`.
            */}
-          <ul className="relative hidden items-center md:flex md:gap-4 lg:grid lg:grid-cols-3 lg:gap-[calc(6px_+_74*var(--fl))]">
+          <ul className="relative hidden items-center lg:grid lg:grid-cols-3 lg:gap-[calc(6px_+_74*var(--fl))]">
             {NAV_LINKS.map((link) => (
               <li key={link.to} className="flex justify-center lg:w-[calc(44px_+_53.33*var(--fl))]">
                 {/*
@@ -361,7 +377,7 @@ export default function Navbar() {
              */}
             <Link
               to="/signin"
-              className="mm-press fl-nav hidden rounded-[100px] bg-brand-red px-[calc(14px_+_26*var(--fl))] py-[calc(8px_+_4*var(--fl))] leading-[1.4] font-bold whitespace-nowrap text-white hover:bg-[#b14f39] sm:block"
+              className="mm-press fl-nav hidden rounded-[100px] bg-brand-red px-[calc(14px_+_26*var(--fl))] py-[calc(8px_+_4*var(--fl))] leading-[1.4] font-bold whitespace-nowrap text-white hover:bg-[#b14f39] lg:block"
             >
               {/* `708:418` — Figma renamed this from ลงทะเบียน, matching the hero CTA's own
                   relabel to สมัครเข้าแข่งขัน (`708:242`). */}
@@ -394,7 +410,7 @@ export default function Navbar() {
               aria-expanded={open}
               aria-controls="site-nav-menu"
               aria-label="เมนู"
-              className="mm-press-icon -my-0.5 -mr-2.5 flex size-11 items-center justify-center rounded-full text-ink hover:text-brand-red sm:mr-0 md:hidden"
+              className="mm-press-icon -my-0.5 -mr-2.5 flex size-11 items-center justify-center rounded-full text-ink hover:text-brand-red lg:hidden"
             >
               {/* both glyphs are stacked and cross-faded, so the button never reflows
                   mid-swap and the bars appear to rotate into the cross */}
@@ -443,7 +459,7 @@ export default function Navbar() {
         <div
           id="site-nav-menu"
           inert={!open}
-          className={`grid overflow-clip transition-[grid-template-rows] duration-[var(--mm-base)] ease-[var(--mm-ease-out)] motion-reduce:transition-none md:hidden ${
+          className={`grid overflow-clip transition-[grid-template-rows] duration-[var(--mm-base)] ease-[var(--mm-ease-out)] motion-reduce:transition-none lg:hidden ${
             open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
           }`}
         >
@@ -504,7 +520,7 @@ export default function Navbar() {
                      * is NOT true of the desktop row, where `708:412` is `#282828` SemiBold against
                      * `708:414` / `708:416` `#282828` Regular: weight only, no colour change. The
                      * two surfaces genuinely differ in the design, so the branch differs here and
-                     * the `md:flex` row above is left alone.
+                     * the `lg:grid` row above is left alone.
                      *
                      * `text-ink` on the inactive branch is the body colour this would inherit
                      * anyway (index.css `body { color: var(--color-ink) }`), written out so the two

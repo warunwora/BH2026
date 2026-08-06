@@ -104,17 +104,20 @@ function ScopeCard({ card, i }: { card: (typeof SCOPE_CARDS)[number]; i: number 
          * landed 25-38% away from what `1190:1002`-`1190:1006` draw at 402 — the widest gap
          * anywhere on the site, and what made the phone cards read wrong.
          *
-         *   rank          gave @402   Figma @402   kept @1440   node
-         *   fl-title-sm      17.43        24          23        1190:1002
-         *   fl-body          15.10        16          19        1190:1003
-         *   fl-title         19.18        24          26        1190:1005
-         *   fl-caption       13.08        18          16        1190:1006
+         *   rank          gave @402   Figma @402   @1440   node
+         *   fl-title-sm      17.43        24           23     1190:1002 / 708:519
+         *   fl-body          15.10        16           19     1190:1003 / 708:520
+         *   fl-title         19.18        24           30     1190:1005 / 708:522
+         *   fl-caption       13.08        18->20       20     1190:1006 / 708:523
          *
-         * Two of the four therefore DESCEND (24 -> 23 and 18 -> 16), the same shape
-         * `fl-eyebrow` already carries and for the same reason: the designer's phone value is
-         * simply larger than the desktop-derived one. The 1440 column is each rank's own
-         * ceiling, i.e. exactly what rendered before this change — so desktop does not move by
-         * a pixel and only the narrow end is corrected.
+         * One of the four DESCENDS (24 -> 23), the same shape `fl-eyebrow` already carries and
+         * for the same reason: the designer's phone value is simply larger than the
+         * desktop-derived one.
+         *
+         * The bottom two rows' 1440 values were CORRECTED later, and they are the exception to
+         * "1440 does not move" — they were never Figma's. The rank ceilings 26 and 16 had been
+         * carried over as if verified; REST says all three desktop cards draw 30 and 20. See the
+         * two notes on the count and the label below for the readings.
          */}
         <div className="relative flex flex-col gap-1">
           {/* 24 @402 (1190:1002) -> 23 @1440 */}
@@ -127,14 +130,30 @@ function ScopeCard({ card, i }: { card: (typeof SCOPE_CARDS)[number]; i: number 
           </p>
         </div>
         <p className="relative flex items-center gap-3">
-          {/* 24 @402 (1190:1005) -> 26 @1440 */}
-          <span className="text-[calc(23.948px_+_2.052*var(--fl))] leading-[1.4]">
+          {/*
+           * 24 @402 -> 30 @1440. The 1440 end was 26 and that was simply wrong: all three
+           * desktop counts are 30 (`708:522` / `708:622` / `708:693`), read from REST, and all
+           * three phone counts are 24 (`1190:1005` / `1190:1105` / `1190:1176`). Both anchors
+           * are unanimous across the three cards, so there is nothing to arbitrate here.
+           */}
+          <span className="text-[calc(23.844px_+_6.156*var(--fl))] leading-[1.4]">
             {card.count}
           </span>
-          {/* 18 @402 (1190:1006) -> 16 @1440 */}
-          <span className="flex-1 text-[calc(18.052px_-_2.052*var(--fl))] leading-[1.4]">
-            หัวข้อ
-          </span>
+          {/*
+           * FLAT 20, and this one IS an arbitration — Figma disagrees with itself.
+           *
+           *   desktop  `708:523` / `708:623` / `708:694`   20 / 20 / 20
+           *   phone    `1190:1006` / `1190:1106` / `1190:1177`   **18** / 20 / 20
+           *
+           * So five of six nodes say 20 and card 1's phone label alone says 18. One shared
+           * component can hold one value, and the 18 is the outlier that also disagrees with its
+           * own desktop counterpart — authoring drift, not a breakpoint. Flat 20 matches five
+           * nodes exactly and misses one by 2px.
+           *
+           * The previous value ramped 18 -> 16, which matched the 18 outlier at the phone end and
+           * nothing at all at 1440, where every card says 20.
+           */}
+          <span className="flex-1 text-[20px] leading-[1.4]">หัวข้อ</span>
           {/*
            * `mm-nudge` — the glyph is `arrow_right_regular`, so it leans right by 4px while the
            * card is hovered. It answers the CARD's hover, not its own: this card is an

@@ -27,6 +27,18 @@ export default function About() {
     /* `overflow-x-clip`: see the note on the same class in Home.tsx. */
     <div className="relative isolate overflow-x-clip min-[1440px]:min-h-[4888px]">
       <AboutDecor />
+      {/*
+       * The guide page's `<h1>`, `sr-only` because Figma gives this page no visible page-level
+       * title: `708:440` opens straight into the numbered sections (01 ขอบเขตเนื้อหา,
+       * 02 แพลตฟอร์ม Codern, 03 คำถามที่พบบ่อย, 04 ติดต่อทีมงาน), each of which is an `<h2>` and
+       * must stay one. Hall of Fame differs — `1297:131` is a real page title there, so that
+       * page promotes its own element rather than hiding one.
+       *
+       * The string is Figma's own name for this route, from the navbar and footer nav
+       * (`708:847` / `708:871` / `1297:332`), so no copy is invented. `.sr-only` is absolutely
+       * positioned and contributes no box, so the first section still starts the page.
+       */}
+      <h1 className="sr-only">คู่มือการแข่งขัน</h1>
       <ScopeSection />
       <CodernSection />
       <FaqSection />

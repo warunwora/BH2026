@@ -267,8 +267,19 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [stopClock],
   )
 
-  // TEMP-MEASURE
-  ;(window as unknown as { __toast?: ToastApi }).__toast = api
+  /*
+   * A handle on the queue for driving the five states from a devtools console or a CDP session
+   * — the toasts are otherwise only reachable by picking a real file, which no headless driver
+   * can do, and the states are exactly what has to be verifiable.
+   *
+   * `import.meta.env.DEV` is the gate, and it is not decoration: Vite replaces the expression
+   * with a literal, so in a production build this is `if (false)` and both the branch and the
+   * property name are dropped by the minifier. Nothing is exported to `window` from a shipped
+   * bundle. This was an ungated assignment before.
+   */
+  if (import.meta.env.DEV) {
+    ;(window as unknown as { __toast?: ToastApi }).__toast = api
+  }
 
   return (
     <ToastContext.Provider value={api}>

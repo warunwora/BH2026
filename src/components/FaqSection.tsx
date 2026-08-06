@@ -283,6 +283,43 @@ export default function FaqSection() {
        * `scale-y-[-1]` is unchanged: it flips about the element's own centre, so the box the
        * offsets position is unaffected.
        */}
+      {/*
+       * ------------------------------------------ why the HEIGHT is `100% + …` and not Figma's
+       *
+       * The height used to be Figma's own, ramped `1175 -> 1163`. Both ends are transcribed
+       * correctly and the pair is still wrong, because Figma's height is only meaningful
+       * alongside Figma's SECTION height — and this section is nowhere near it:
+       *
+       *     width   section (measured)   Figma's section   field overhang below the section
+       *      402         779.9                966                330  (Figma: 144)
+       *      768         620.1                 —                 498
+       *     1024         808.3                 —                 316
+       *     1280         923.1                 —                 206
+       *     1440         994.8               1024                138  (Figma: 109)
+       *
+       * The section is short for two reasons that are both deliberate and neither reversible
+       * here: the type ladder is tighter than Figma's 1440 sizes, and the accordion ships with
+       * every answer COLLAPSED while Figma's frames draw all five EXPANDED. So a fixed height
+       * anchored at the top necessarily runs further and further past the section's bottom as
+       * the section shrinks — measured 498px past it at 768.
+       *
+       * That overhang is what put the cream behind the next section's `04` / ติดต่อทีมงาน
+       * heading, which Figma draws on WHITE. Sampled at the heading's own gutter column, the
+       * painted curve (not the box — the box's bottom corner is well below the curve there)
+       * sat BELOW the eyebrow at 402, 768, 1024 and 1440, clearing it only at 1280.
+       *
+       * So the field is sized from the box it belongs to instead. Both overhangs are Figma's
+       * own, at Figma's own anchors, and the section supplies the rest:
+       *
+       *     top    65 @402 -> 30 @1440     (unchanged — this end was always right)
+       *     bottom 144 @402 -> 109 @1440   (1110 - 966, and 1133 - 1024)
+       *     height 100% + top + bottom
+       *
+       * Now the curve lands in the white gap above the contact heading at every width —
+       * measured clearance 103…130px, against Figma's own 95 at 1440 — and it tracks the
+       * accordion: opening a row grows the section and the field grows with it, where before
+       * the copy slid down inside a field that could not follow.
+       */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <img
           src="/assets/figma/5b4f0c1a6c5aa6f21d4a8c19dce31ff99afb3877.svg"
@@ -290,9 +327,10 @@ export default function FaqSection() {
           className="absolute max-w-none scale-y-[-1]"
           style={{
             left: 'calc(-1339.92px + 548.92 * var(--fl))' /* -1326 @402 -> -791 @1440 */,
-            top: 'calc(-65.91px + 35.91 * var(--fl))' /* -65 -> -30 */,
+            top: 'calc(-65.9105px + 35.9105 * var(--fl))' /* -65 -> -30 */,
             width: 'calc(3055.83px - 32.83 * var(--fl))' /* 3055 -> 3023 */,
-            height: 'calc(1175.31px - 12.31 * var(--fl))' /* 1175 -> 1163 */,
+            /* 100% + top overhang + bottom overhang: 209 @402 -> 139 @1440 */
+            height: 'calc(100% + 210.821px - 71.821 * var(--fl))',
           }}
         />
       </div>

@@ -71,7 +71,21 @@ export type DecorNode = {
 export type Box = { w: number; h: number }
 export type Space = { box: Box; dy: number } | null
 
-export const pc = (v: number, of: number) => `${((v / of) * 100).toFixed(4)}%`
+/**
+ * A length as a percentage of its container.
+ *
+ * The `of <= 0` guard is not theoretical. Every caller's divisor comes from a MEASUREMENT
+ * (`useSectionAnchor` reads `offsetTop` / `offsetHeight`), and a measured element that is
+ * detached — or in a subtree being torn down — reports 0 for both. `0 / 0` is `NaN`, and React
+ * then writes `top: NaN%` and logs `NaN is an invalid value for the top css style property`.
+ * `v / 0` where `v` is non-zero is `Infinity`, which serialises just as badly.
+ *
+ * Observed exactly once, in a harness that removed an iframe mid-measure; 27 route x width
+ * loads with `console.error` intercepted before app startup produce none. So this guards a
+ * teardown race rather than a layout the user can reach — but a decoration is never worth a
+ * console error, and `0%` is the correct answer for "a fraction of nothing".
+ */
+export const pc = (v: number, of: number) => (of > 0 ? `${((v / of) * 100).toFixed(4)}%` : '0%')
 
 function nodeStyle(n: DecorNode, space: Space): CSSProperties {
   if (!space) return { left: n.x, top: n.y, width: n.w, height: n.h }
