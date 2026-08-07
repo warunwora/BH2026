@@ -20,6 +20,7 @@ import TermsStep from './pages/register/TermsStep'
 import SuccessStep from './pages/register/SuccessStep'
 import ErrorStep from './pages/register/ErrorStep'
 import MyTeam from './pages/MyTeam'
+import ComingSoon from './pages/ComingSoon'
 import NotFound from './pages/NotFound'
 import { trackAuthNav } from './components/form/wizardNav'
 import { ToastProvider } from './components/toast/ToastProvider'
@@ -259,6 +260,8 @@ const router = createBrowserRouter(
       <Route path="/register/success" element={<SuccessStep />} />
       <Route path="/register/error" element={<ErrorStep />} />
       <Route path="/my-team" element={<MyTeam />} />
+      {/* Figma 1423:2621 — stands alone, without the nav/footer chrome, same as the 404 */}
+      <Route path="/coming-soon" element={<ComingSoon />} />
       {/* Figma 708:1240 — the 404 page stands alone, without the nav/footer chrome */}
       <Route path="*" element={<NotFound />} />
     </Route>,
