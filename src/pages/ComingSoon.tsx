@@ -41,6 +41,8 @@
  * over. Every browser this codebase already requires — it uses CSS `atan2()`, `dvh` and view
  * transitions — has supported WebP for years, so no PNG fallback is carried.
  */
+import { ShrimpRing } from '../components/ShrimpRing'
+
 const A = '/assets/figma/'
 
 /**
@@ -78,10 +80,34 @@ type CornerArt = {
  * = −330.07, 1024 − (438 + 860.42) = −274.42. Negative because every one of them overhangs.
  */
 const BOARD: CornerArt[] = [
-  { src: `${A}coming-soon-napkin-left.webp`, w: 1061.07, h: 1011.38, left: -485, top: -417 },
-  { src: `${A}coming-soon-napkin-right.webp`, w: 1061.07, h: 1011.38, right: -330.07, top: -644 },
-  { src: `${A}coming-soon-pasta-left.webp`, w: 707.35, h: 643.99, left: -294, bottom: -214.99 },
-  { src: `${A}coming-soon-pasta-right.webp`, w: 1050.39, h: 860.42, right: -525.39, bottom: -274.42 },
+  {
+    src: `${A}coming-soon-napkin-left.webp`,
+    w: 1061.07,
+    h: 1011.38,
+    left: -485,
+    top: -417,
+  },
+  {
+    src: `${A}coming-soon-napkin-right.webp`,
+    w: 1061.07,
+    h: 1011.38,
+    right: -330.07,
+    top: -644,
+  },
+  {
+    src: `${A}coming-soon-pasta-left.webp`,
+    w: 707.35,
+    h: 643.99,
+    left: -294,
+    bottom: -214.99,
+  },
+  {
+    src: `${A}coming-soon-pasta-right.webp`,
+    w: 1050.39,
+    h: 860.42,
+    right: -525.39,
+    bottom: -274.42,
+  },
 ]
 
 /**
@@ -94,10 +120,34 @@ const BOARD: CornerArt[] = [
  *   1423:2603 pasta   x  143.78  y   656.95  434.21 x 356.01  → bottom-right, -175.99/-138.96
  */
 const PHONE_BOARD: CornerArt[] = [
-  { src: `${A}coming-soon-napkin-left-mobile.webp`, w: 562.63, h: 536.28, left: -357, top: -142 },
-  { src: `${A}coming-soon-napkin-right-mobile.webp`, w: 624.45, h: 595.2, right: -253.45, top: -356 },
-  { src: `${A}coming-soon-pasta-left-mobile.webp`, w: 494.45, h: 476.36, left: -226.58, bottom: -162.85 },
-  { src: `${A}coming-soon-pasta-right-mobile.webp`, w: 434.21, h: 356.01, right: -175.99, bottom: -138.96 },
+  {
+    src: `${A}coming-soon-napkin-left-mobile.webp`,
+    w: 562.63,
+    h: 536.28,
+    left: -357,
+    top: -142,
+  },
+  {
+    src: `${A}coming-soon-napkin-right-mobile.webp`,
+    w: 624.45,
+    h: 595.2,
+    right: -253.45,
+    top: -356,
+  },
+  {
+    src: `${A}coming-soon-pasta-left-mobile.webp`,
+    w: 494.45,
+    h: 476.36,
+    left: -226.58,
+    bottom: -162.85,
+  },
+  {
+    src: `${A}coming-soon-pasta-right-mobile.webp`,
+    w: 434.21,
+    h: 356.01,
+    right: -175.99,
+    bottom: -138.96,
+  },
 ]
 
 /**
@@ -136,7 +186,15 @@ const FIT_BOARD = 'clamp(0.45, min(tan(atan2(100vw, 1440px)), tan(atan2(100dvh, 
  * by the swap: these are decorative, the layer is already `aria-hidden`, and
  * `background-size: 100% 100%` fills the box exactly the way the `<img>` did.
  */
-function Decor({ pieces, fit, className }: { pieces: CornerArt[]; fit: string; className: string }) {
+function Decor({
+  pieces,
+  fit,
+  className,
+}: {
+  pieces: CornerArt[]
+  fit: string
+  className: string
+}) {
   /* board px → screen px. Both the size and the overhang go through it, so a piece keeps
      its shape and its grip on the corner at the same time. */
   const s = (v: number) => `calc(${v}px * var(--cs-fit))`
@@ -205,6 +263,39 @@ const COPY_GAP = 'calc(15.792px + 8.208 * var(--fl))'
 const LOGOS_W = 'w-[min(81.8157vw,430px)] lg:w-[min(57.8028vw,832.36px)]'
 const WORDART_W = 'w-[min(79.602vw,420px)] lg:w-[min(73.3958vw,1056.9px)]'
 
+/**
+ * The word art, in three layers, because its second O is the shrimp pinwheel and that turns.
+ *
+ * Figma flattens the whole thing into one drawing, and the first pass shipped it that way —
+ * so this page had a still copy of the one piece of art on the site that is defined by
+ * rotating (components/ShrimpRing.tsx; the 404 turns the same ring on the same 96s clock).
+ * Checked before splitting: 1419:2037 is the 404's ring times 0.337278 and 1423:2060 is it
+ * times 0.18, box for box and angle for angle — one drawing at three sizes, not three.
+ *
+ * The split is a layering fact, not a convenience. Figma's paint order inside 1419:2027 is
+ * COMING, then the O and the N of SOON, then the shrimp, then the S — so the ring sits OVER
+ * the O/N and UNDER the S, and its tails interleave with the S's right edge. A single letters
+ * image with the ring on either side of it gets one of those two wrong, and since the ring
+ * turns, a tail that should pass behind the S would sweep across it once a minute. Hence
+ * `back` (everything under the ring), the ring, then `s` on top.
+ *
+ * Every box below is a percentage of the word art's own frame, taken from Figma's render
+ * bounds, so all three layers scale as one with `WORDART_W`.
+ */
+const RING_BOX =
+  '[--x:26.2734%] [--y:53.782%] [--w:25.181%] [--h:45.6188%] ' +
+  'lg:[--x:67.3148%] lg:[--y:1.5187%] lg:[--w:14.2871%] lg:[--h:102.6881%]'
+const S_BOX =
+  '[--x:17.6898%] [--y:55.4326%] [--w:12.7214%] lg:[--x:62.4447%] lg:[--y:5.2341%] lg:[--w:7.2178%]'
+/* the pair of boxes above resolve through these; height is left to the S's own aspect */
+const AT_XYWH = {
+  left: 'var(--x)',
+  top: 'var(--y)',
+  width: 'var(--w)',
+  height: 'var(--h)',
+}
+const AT_XYW = { left: 'var(--x)', top: 'var(--y)', width: 'var(--w)' }
+
 /*
  * The word art's LAYOUT box, which is not its image.
  *
@@ -260,15 +351,33 @@ export default function ComingSoon() {
           <img src={`${A}coming-soon-logos-mobile.webp`} alt={LOGOS_ALT} className={LOGOS_W} />
         </picture>
 
-        {/* the box is the Figma frame; the shrimp spill past its bottom — see WORDART_BOX */}
+        {/* the box is the Figma frame; the ring spills past its bottom — see WORDART_BOX */}
         <div className={`relative ${WORDART_W} ${WORDART_BOX}`}>
+          {/* under the ring: COMING, and the O and N of SOON */}
           <picture>
-            <source media="(min-width: 1024px)" srcSet={`${A}coming-soon-wordart.webp`} />
+            <source media="(min-width: 1024px)" srcSet={`${A}coming-soon-wordart-back.webp`} />
             <img
-              src={`${A}coming-soon-wordart-mobile.webp`}
+              src={`${A}coming-soon-wordart-back-mobile.webp`}
               alt=""
               aria-hidden
-              className="absolute inset-x-0 top-0 block w-full"
+              className="absolute inset-0 block size-full"
+            />
+          </picture>
+
+          {/* the second O: the live pinwheel, at the box Figma's flattened copy occupied */}
+          <div className={`absolute ${RING_BOX}`} style={AT_XYWH}>
+            <ShrimpRing />
+          </div>
+
+          {/* over the ring: the S, whose right edge the shrimp tails pass behind */}
+          <picture>
+            <source media="(min-width: 1024px)" srcSet={`${A}coming-soon-wordart-s.webp`} />
+            <img
+              src={`${A}coming-soon-wordart-s-mobile.webp`}
+              alt=""
+              aria-hidden
+              className={`absolute block ${S_BOX}`}
+              style={AT_XYW}
             />
           </picture>
         </div>

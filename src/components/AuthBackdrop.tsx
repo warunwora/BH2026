@@ -389,7 +389,7 @@ export default function AuthBackdrop() {
          * The pan is STATIC. It used to carry `.auth-pan-turn` (styles/pasta-motion.css) —
          * one revolution per `--turn-period`, about its bowl at 49.7%/59.1% rather than the
          * box centre — and that is the rotation the design does not want here. The two rings
-         * that share the same `pan-turn` keyframe (`.hof-pan-ring`, `.nf-shrimp-ring`) keep
+         * that share the same `pan-turn` keyframe (`.hof-pan-ring`, `.shrimp-ring`) keep
          * theirs: dropping the class from this one element is what scopes it to sign-in.
          *
          * Which also collapses the two-element split. That existed only because the entrance
