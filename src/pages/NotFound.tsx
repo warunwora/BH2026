@@ -1,58 +1,12 @@
 import { Link } from 'react-router-dom'
+import { RING_H, RING_W, ShrimpRing } from '../components/ShrimpRing'
 
-const SHRIMP = '/assets/figma/01d9f57448516699ad9b6756339f9fb833c9f171.png'
 const BACKGROUND = '/assets/figma/37c55e8c7ab35b0d51619d1970dcb5f835654651.svg'
 const FOUR_LEFT = '/assets/figma/db133365c91e8d541642cf54a783f2ca6e7c3114.svg'
 const FOUR_RIGHT = '/assets/figma/f61a22ef6a5504eb0dc06c2aa9383260e0062c70.svg'
 
 const MESSAGE = 'ขออภัย ไม่พบหน้าที่คุณค้นหา'
 const BACK = 'กลับไปยังหน้าหลัก'
-
-/**
- * Figma 708:1242-1249 "Decoration / Shrimp", the eight children of frame 1297:2115 "Shrimp" —
- * eight copies of ONE shrimp (all eight share the same image fill, hence the one PNG above)
- * ringed around the centre. Coordinates are relative to 1297:2115's own box so the whole
- * cluster can be dropped in at 1440 scale or shrunk for narrow screens.
- *
- * `[left, top, boxSize, rotate]`, straight off Figma's codegen for 1297:2115, node by node:
- * 708:1242 -> 708:1249 in table order. The image inside every box is 194.776 square and the
- * box is that square's bounding box once rotated — 194.776 * (|cos| + |sin|), which is why no
- * two boxes are the same size even though no two shrimp differ.
- *
- * Note `get_metadata` reports a DIFFERENT x/y for these same nodes (708:1242 at 447.701,
- * 245.318 rather than 193.85, 64.92): that tool gives the rotated node's own corner, codegen
- * gives the bounding box's top-left. The second is the one that means `left`/`top` in CSS.
- */
-const SHRIMPS: [number, number, number, number][] = [
-  [193.85, 64.92, 253.848, -112.16],
-  [188.3, 141.96, 254.557, -67.46],
-  [129.96, 193.11, 254.976, -22.77],
-  [53.31, 189.51, 253.418, 21.93],
-  [0, 130.6, 256.076, 66.62],
-  [5.46, 55.03, 252.25, 111.31],
-  [60.03, 0, 257.146, 156.01],
-  [140.59, 5.77, 251.053, -159.3],
-]
-
-/** Frame 1297:2115 "Shrimp" — 447.701171875 x 448.08203125 at 494.956, 255 in 708:1240. */
-const RING_W = 447.701
-const RING_H = 448.082
-
-/**
- * Figma's codegen writes every rotated-and-flipped node as Tailwind v4's `-scale-y-100
- * rotate-[Ndeg]`, and those are the INDIVIDUAL `scale` and `rotate` properties, which
- * css-transforms-2 composes in a fixed order: translate, then rotate, then scale. So the
- * matrix is `rotate` THEN `scale`, and the single-property equivalent is
- * `rotate(Ndeg) scaleY(-1)` — in that order, because a `transform` list applies right to
- * left.
- *
- * Writing it the other way round, `scaleY(-1) rotate(Ndeg)`, is not a harmless reordering:
- * S·R(N) === R(-N)·S, so it silently NEGATES every angle. On a ring of eight that turns
- * Figma's pinwheel — heads out, tails meeting in the middle — into eight shrimp lying across
- * each other in a heap, which is what this page used to draw and what it was reported as:
- * unreadable line-art scribble between the two 4s.
- */
-const shrimpTransform = (rotate: number) => `rotate(${rotate}deg) scaleY(-1)`
 
 /**
  * Figma 708:1240 places the three pieces of the glyph row at
@@ -73,45 +27,21 @@ const ART_RING = 494.956 - 235
 const ART_RIGHT_4 = 891 - 235
 
 /**
- * The ring at Figma's own scale.
+ * The ring at Figma's own scale — the drawing itself, and the turn it rides, are in
+ * components/ShrimpRing.tsx, which /coming-soon shares.
  *
- * It turns, on the site's shared 96s clock — the same `pan-turn` the sign-in shaker ring and
- * hall of fame's pan ring use, via `--turn-period` in styles/pasta-motion.css. This was the
- * one ring of the three standing still, on the one page whose whole job is to make a dead
- * end feel survivable.
+ * The box here is the layout footprint and must not rotate, or it would push the 4s around;
+ * `<ShrimpRing>` fills it absolutely and turns inside it.
  *
- * Two nested boxes, and the class can only go on the inner one. The outer box is the layout
- * footprint and must not rotate or it would push the 4 and the 0 around. The inner shrimp
- * boxes each carry Figma's own per-shrimp rotation inline (`shrimpTransform` above), and an
- * animation on `transform` would overwrite it. So the group in between takes it.
- *
- * It no longer takes a `scale`: the below-`lg` composition scales the whole glyph row as one
- * group (see the row below), so the ring is always drawn at Figma's own size and the factor
- * lives one box out — on `scale`, the individual property, which cannot collide with the
+ * It takes no `scale`: the below-`lg` composition scales the whole glyph row as one group
+ * (see the row below), so the ring is always drawn at Figma's own size and the factor lives
+ * one box out — on `scale`, the individual property, which cannot collide with the
  * `transform` the turn owns.
  */
-function ShrimpRing() {
+function Ring() {
   return (
     <div className="relative shrink-0" style={{ width: RING_W, height: RING_H }} aria-hidden>
-      <div className="nf-shrimp-ring absolute inset-0">
-        {SHRIMPS.map(([left, top, box, rotate], i) => (
-          <div
-            key={i}
-            className="absolute flex items-center justify-center"
-            style={{ left, top, width: box, height: box }}
-          >
-            <div className="flex-none" style={{ transform: shrimpTransform(rotate) }}>
-              <div className="relative size-[194.776px]">
-                <img
-                  src={SHRIMP}
-                  alt=""
-                  className="absolute inset-0 size-full max-w-none object-cover"
-                />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      <ShrimpRing />
     </div>
   )
 }
@@ -205,7 +135,7 @@ export default function NotFound() {
             data-rise="0"
           />
           <div className="auth-rise absolute top-[255px] left-[494.96px]" data-rise="0">
-            <ShrimpRing />
+            <Ring />
           </div>
           <img
             src={FOUR_RIGHT}
@@ -278,7 +208,7 @@ export default function NotFound() {
               style={{ left: ART_LEFT_4 }}
             />
             <div className="absolute top-0" style={{ left: ART_RING }}>
-              <ShrimpRing />
+              <Ring />
             </div>
             <img
               src={FOUR_RIGHT}
