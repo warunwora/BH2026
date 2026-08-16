@@ -1,21 +1,33 @@
 import { useParams } from 'react-router-dom'
-import WizardShell, { BackButton, NextButton } from '../../components/form/WizardShell'
+import WizardShell, { BackButton, NextButton, SubmitButton } from '../../components/form/WizardShell'
 import { DocumentRow, Separator } from '../../components/form/Field'
 import PersonFields, { ContactFields } from './PersonFields'
 import { STUDENT_DOCUMENTS } from '../../registrationData'
 
-/** Figma 708:1540 / 708:1746 — entrant 1 is step 3, entrant 2 step 4, same form. */
+/**
+ * Figma 708:1540 / `2053:498` — entrant 1 is step 4, `2053:694` — entrant 2 step 5, same form.
+ *
+ * `2053:694`'s own action bar still reads ถัดไป/ย้อนกลับ like every other step — the frame was
+ * cloned from an earlier step and never relabelled for the flow's new last position. The submit
+ * pill (busy state, `ลงทะเบียนเข้าแข่งขัน` label) stays on whichever entrant is actually last,
+ * since the control has to keep doing what a last step's control does regardless of what its
+ * Figma clone says.
+ */
 export default function EntrantStep() {
   const { index } = useParams()
   const n = index === '2' ? 2 : 1
 
   return (
     <WizardShell
-      step={n === 1 ? 3 : 4}
+      step={n === 1 ? 4 : 5}
       actions={
         <>
           <BackButton to={n === 1 ? '/register/advisor' : '/register/entrant/1'} />
-          <NextButton to={n === 1 ? '/register/entrant/2' : '/register/terms'} />
+          {n === 1 ? (
+            <NextButton to="/register/entrant/2" />
+          ) : (
+            <SubmitButton to="/register/success" label="ลงทะเบียนเข้าแข่งขัน" />
+          )}
         </>
       }
     >

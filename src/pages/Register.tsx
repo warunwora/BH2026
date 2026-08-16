@@ -239,7 +239,7 @@ export default function Register() {
         {/* `enter`, not `forward`: this hop sinks the colour blocks away and spills the
             wizard's pasta in, which no step-to-step move should do. */}
         <Link
-          {...authLink('/register/team', 'enter')}
+          {...authLink('/register/terms', 'enter')}
           /* same pill as the result screens' `RESULT_ACTION`: 49 tall on `1214:155`, 60 at
              1440 (`708:1203`). Two values that were flat and are Figma ramps: the RADIUS is
              16 on `1214:155` against 20 on `708:1203`, and the LABEL is 16 on `1214:156`

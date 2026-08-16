@@ -7,10 +7,14 @@ import { authLink, useAuthBackLink, useAuthNavigate } from './wizardNav'
 
 export const TOTAL_STEPS = 5
 
-const CRUMBS = ['ข้อมูลทีม', 'อาจารย์', 'ผู้เข้าแข่งขัน', 'เงื่อนไข']
+/**
+ * Reordered per Figma `2053:108`/`2053:217`/`2053:318`/`2053:498`/`2053:694`: เงื่อนไข is now
+ * step 1, ahead of the team/advisor/entrant steps it used to close the flow behind.
+ */
+const CRUMBS = ['เงื่อนไข', 'ข้อมูลทีม', 'อาจารย์', 'ผู้เข้าแข่งขัน']
 
-/** Which breadcrumb is active for each 1-based step. Steps 3 and 4 share a crumb. */
-const CRUMB_FOR_STEP = [0, 1, 2, 2, 3]
+/** Which breadcrumb is active for each 1-based step. Steps 4 and 5 share a crumb. */
+const CRUMB_FOR_STEP = [0, 1, 2, 3, 3]
 
 /**
  * Figma 708:1255 and friends. The wizard sits on #fefdfc inside a 1440 frame with 200

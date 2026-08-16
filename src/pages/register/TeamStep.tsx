@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import WizardShell, { NextButton } from '../../components/form/WizardShell'
+import WizardShell, { BackButton, NextButton } from '../../components/form/WizardShell'
 import {
   CHECK_MARK,
   CheckMark,
@@ -59,7 +59,10 @@ function Avatar({ crop, src }: { crop: boolean; src: string }) {
 /* the two text controls of this section, so "ล้าง" has something to put back */
 const EMPTY = { name: '', school: '' }
 
-/** Figma 708:1255 — the shortest step, which is why the shell's card floor is 832. */
+/**
+ * Figma 708:1255 / `2053:217` — the shortest step, which is why the shell's card floor is 832.
+ * Team is now step 2: เงื่อนไข moved ahead of it, so this step gained a back button.
+ */
 export default function TeamStep() {
   /* the caption says จำกัดขนาดไม่เกิน 5 MB, so 5 MB is what the box enforces */
   const photo = useFileSlot({ kind: 'image', maxMB: 5 })
@@ -76,7 +79,15 @@ export default function TeamStep() {
   const [touched, setTouched] = useState(false)
 
   return (
-    <WizardShell step={1} actions={<NextButton to="/register/advisor" />}>
+    <WizardShell
+      step={2}
+      actions={
+        <>
+          <BackButton to="/register/terms" />
+          <NextButton to="/register/advisor" />
+        </>
+      }
+    >
       <section className="flex w-full flex-col items-center justify-center gap-4">
         {/*
          * Clearing is scoped to this section, which is the whole section: the two text

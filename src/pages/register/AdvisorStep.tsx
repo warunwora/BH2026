@@ -3,11 +3,11 @@ import { DocumentRow, Separator } from '../../components/form/Field'
 import PersonFields, { ContactFields } from './PersonFields'
 import { ADVISOR_DOCUMENTS } from '../../registrationData'
 
-/** Figma 708:1350. */
+/** Figma 708:1350 / `2053:318` — advisor is now step 3, behind terms and team. */
 export default function AdvisorStep() {
   return (
     <WizardShell
-      step={2}
+      step={3}
       actions={
         <>
           <BackButton to="/register/team" />

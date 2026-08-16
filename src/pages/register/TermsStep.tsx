@@ -1,121 +1,116 @@
 import { useState } from 'react'
-import WizardShell, { BackButton, SubmitButton } from '../../components/form/WizardShell'
+import WizardShell, { NextButton } from '../../components/form/WizardShell'
 import { CHECK_MARK, CheckMark } from '../../components/form/Field'
 import PolicyModal from '../../components/PolicyModal'
-import { CONSENTS, REQUIRED_DOCUMENTS } from '../../registrationData'
+import { AGREEMENT_LINKS, CONSENTS } from '../../registrationData'
 
 /**
- * Figma 708:1952 at 1440 and `1243:2161` at 402. Two groups of rounded rows: mandatory documents
- * that open a modal, then per-topic consents answered with a check pair. The consent rows carry 24
- * of right padding where the document rows carry 12, so the row padding is passed in.
+ * Figma `2053:108` at 1440 — a full redesign of this step, and now the FIRST one: the wizard
+ * used to close on เงื่อนไข (step 5), Figma now opens on it (step 1, `WizardShell`'s crumb order
+ * follows). The old three-card "เอกสารบังคับ" section (each opening its own document in a
+ * modal) is gone, replaced by one illustration plate and a single agreement checkbox whose
+ * sentence links all four documents inline. The "ความยินยอม" section below it keeps the same
+ * bordered-row / ยอมรับ-ไม่ยอมรับ shape this step already had.
  *
- * THE PHONE ANCHOR MOVES. The earlier pass read this step off the `1297:14xx` run, which belongs
- * to the Privacy Policy Modal frame (`1297:1433`) — the terms step drawn UNDER a scrim. The step's
- * own 402 frame is `1243:2161`, and where the two disagree it wins. Every id below is from it.
- *
- * TYPE is now written out rather than left on `fl-20` / `fl-18`. Figma's phone values are lower
- * than either rank's floor — `1243:2389` is a 16 title over a 12 description, against a floor of
- * 17 and 16 — so the ranks were carrying the phone 1px and 4px over the frame. The rule is now
- * that a measured phone value beats the ladder, so each one is a two-anchor ramp at its call site.
+ * No Figma mobile frame was given for this redesign (the six links are all 1440 desktop
+ * frames), so every length below is either a flat value straight from the frame or, where the
+ * file already carries a verified two-anchor ramp for that exact rank (the 20px title, the
+ * checkbox itself), the existing ramp — nothing here is a new guessed anchor.
  */
-/**
- * The row's leading mark, and it has TWO phone anchors for one 1440 value — which is why the
- * size is a prop rather than a constant.
- *
- * Figma draws every one of these 40 square at 1440 (`708:1995` hand, `708:2004` document,
- * `724:393` image, `724:405` stethoscope, `724:401` pencil, `724:403` album) but splits them on
- * the 402 frame: the three DOCUMENT rows are 24 (`1297:1486`, `1297:1495`, `1297:1504`) and the
- * three CONSENT rows are 28 (`1297:1515`, `1297:1533`, `1297:1551`). A flat `size-10` was the
- * 1440 figure on both, i.e. a 40px mark in a row Figma draws 112 tall holding a 40-tall block.
- *
- * The gap goes with it: 8 on the phone frame (`1297:1486` ends at 24, `1297:1488` starts at 32)
- * against 16 at 1440 (`708:1995` ends at 52, `708:1997` starts at 68) — `sm:gap-4` unchanged.
- */
-const ROW_GLYPH = {
-  /* 24 @402 (`1243:2386` hand, `1243:2394` document, `1243:2402` image) → 40 @1440 */
-  24: 'size-[calc(23.584px_+_16.416*var(--fl))]',
-  /* 28 @402 (`1243:2450`, `1243:2467`, `1243:2484`) → 40 @1440 */
-  28: 'size-[calc(27.688px_+_12.312*var(--fl))]',
-} as const
 
 /**
- * And the RADIUS splits on the same axis, which is why it can no longer be the flat `rounded-[16px]`
- * the shared `Row` carried. The two row kinds disagree on the phone frame and agree at 1440:
+ * The fanned document stack above the checkbox (Figma `Frame 2043683181`, 928x100, clipped).
+ * All three cards are the SAME size, rotated a negligible −0.039° (i.e. visually flat), and
+ * staggered by a flat (79, 12) each step — the "fan" is entirely the offset, not the rotation.
+ * The colour goes darkest-at-back to lightest-at-front, which is Figma's own front-to-back
+ * order (the rectangle drawn LAST, most offset, is the lightest).
  *
- *   document rows  12 @402 (`1243:2385`, `1243:2393`, `1243:2401`) → 16 @1440 (`708:1994`)
- *   consent rows   16 @402 (`1243:2449`, `1243:2466`, `1243:2483`) → 16 @1440 (`722:344`)
- *
- * So a flat 16 was right on three rows and 4px too round on the other three. Keyed off `glyph`
- * rather than a second prop, because the phone glyph size is already the thing that distinguishes
- * the two kinds and a second flag would let them drift apart.
+ * Expressed as percentages of the clip window rather than a px ramp: the plate is `w-full`
+ * inside the bordered box, so sizing every card as a fraction of that same box scales it
+ * correctly at any width without needing a second Figma anchor.
  */
-const ROW_RADIUS = {
-  24: 'rounded-[calc(11.896px_+_4.104*var(--fl))]',
-  28: 'rounded-[16px]',
-} as const
+const CLIP = { width: 928, height: 100 }
+const CARD = { width: 769.2947, height: 129.553 }
+const AGREEMENT_CARDS = [
+  { color: '#cd7865', x: 0, y: 1.00013 },
+  { color: '#d99a8b', x: 79, y: 13 },
+  { color: '#e6bbb2', x: 158, y: 24.997 },
+]
+
+function AgreementStack() {
+  return (
+    <div
+      aria-hidden
+      className="relative w-full overflow-hidden"
+      style={{ aspectRatio: `${CLIP.width} / ${CLIP.height}` }}
+    >
+      {AGREEMENT_CARDS.map((card, i) => (
+        <span
+          key={i}
+          className="absolute rounded-xl"
+          style={{
+            left: `${(card.x / CLIP.width) * 100}%`,
+            top: `${(card.y / CLIP.height) * 100}%`,
+            width: `${(CARD.width / CLIP.width) * 100}%`,
+            height: `${(CARD.height / CLIP.height) * 100}%`,
+            backgroundColor: card.color,
+          }}
+        />
+      ))}
+    </div>
+  )
+}
+
+/**
+ * The sentence's four document names, each a span `AGREEMENT_LINKS` can look up. Split by hand
+ * off the Figma text node's `characters` — its own `characterStyleOverrides` array is a few
+ * entries short of the string's length (Thai combining marks throw the raw index off), so the
+ * boundaries here are read off the actual document names rather than trusted blindly from the
+ * array's tail, where the drift lands.
+ */
+const AGREEMENT_SEGMENTS = [
+  'ข้าพเจ้าได้อ่านและยอมรับ ',
+  { link: 'กฎกติกาการแข่งขัน' },
+  ' ',
+  { link: 'ข้อกำหนดการใช้งานเว็บไซต์' },
+  ' และ ',
+  { link: 'ข้อกำหนดการใช้งาน Codern' },
+  ' รวมทั้งได้อ่าน',
+  { link: 'นโยบายความเป็นส่วนตัว' },
+  'แล้ว',
+] as const
+
+/** The one checkbox's own box: same 16→24 ramp `ConsentChoice` uses below, so both controls on
+ *  this step read as the one checkbox design. */
+const AGREEMENT_BOX =
+  'flex size-[calc(15.792px_+_8.208*var(--fl))] shrink-0 items-center justify-center rounded-[calc(3.948px_+_2.052*var(--fl))] p-[calc(1.948px_+_2.052*var(--fl))] transition-colors'
+
+/** The row's leading mark — 40 flat at every width (`2053:157`/`2053:181` on the 1440 frame;
+ *  no phone anchor to split it against). */
+const ROW_GLYPH = 'size-10'
 
 function Row({
   icon,
   title,
+  required,
   description,
-  rounded,
-  padding,
-  glyph,
   children,
 }: {
   icon: string
   title: string
+  required?: boolean
   description: string
-  rounded?: boolean
-  padding: string
-  /** The mark's size on the 402 frame — 24 for a document row, 28 for a consent row. */
-  glyph: keyof typeof ROW_GLYPH
   children: React.ReactNode
 }) {
   return (
-    <div
-      className={`flex w-full flex-col gap-3 border border-[#dcdcdc] sm:flex-row sm:items-center sm:gap-[calc(7.792px_+_8.208*var(--fl))] ${ROW_RADIUS[glyph]} ${padding}`}
-    >
-      {/*
-       * THE MARK SITS BESIDE THE TEXT ON THE PHONE TOO — only the control drops to its own line.
-       * Figma builds every one of these six rows the same way at 402: a VERTICAL row on a 12 gap
-       * whose first child is a HORIZONTAL pair of glyph and text on an 8 gap (`1243:2409`,
-       * `1243:2410`, `1243:2411` for the documents; `1243:2501`, `1243:2502`, `1243:2503` for the
-       * consents), and whose second child is the button or the check pair. Stacking all three in
-       * one column put the glyph on a line of its own and made each row ~36px taller than the
-       * frame — the document row is 112 at 402 (12 + 40 + 12 + 36 + 12) and the consent row 96
-       * (12 + 40 + 12 + 20 + 12), and neither is reachable with the mark on its own line.
-       *
-       * `sm:contents` rather than a nested flex row at every width: from `sm` up this wrapper stops
-       * generating a box and the glyph and the text block become direct items of the outer row
-       * again, so the `sm:` layout — and 1440 with it — is byte-for-byte what it was.
-       *
-       * `items-start`, not `items-center`: Figma pins the glyph to the top of the 40-tall pair
-       * (`1243:2386` is at offset 0,0 in it), where at 1440 it is optically centred in a 55-tall
-       * block, which is what the outer row's `sm:items-center` already does.
-       */}
+    <div className="flex w-full flex-col gap-3 rounded-[16px] border border-[#dcdcdc] py-3 pr-6 pl-3 sm:flex-row sm:items-center sm:gap-4">
       <div className="flex items-start gap-2 sm:contents">
-        <img
-          src={icon}
-          alt=""
-          aria-hidden
-          /* the image row's own corner is 4 @402 (`1243:2402`) → 8 @1440 (`724:393`); it was the
-             1440 value held flat. The glow is not from Figma and is left alone. */
-          className={`shrink-0 ${ROW_GLYPH[glyph]} ${rounded ? 'rounded-[calc(3.896px_+_4.104*var(--fl))] shadow-[0_0_30px_rgba(255,255,255,0.2)]' : ''}`}
-        />
-        {/* `min-w-0` because below `sm` this block is now a flex ITEM beside the glyph rather than
-            a full-width column child, and a flex item's automatic minimum size is its content's —
-            which here is unspaced Thai, i.e. one long "word". Without it a row could push the
-            document past the viewport and make the page pannable sideways on a phone. */}
+        <img src={icon} alt="" aria-hidden className={`shrink-0 ${ROW_GLYPH}`} />
         <div className="flex min-w-0 flex-1 flex-col items-start justify-center">
-          {/* 16 @402 (`1243:2389`) → 20 @1440 (`708:1998`), Medium at both — `fl-20`'s floor is
-              17, so the phone title ran 1px over. lh is 1.4 at both (22.4 / 16, 28 / 20). */}
           <p className="text-[calc(15.896px_+_4.104*var(--fl))] leading-[1.4] font-medium">
             {title}
+            {required && <span className="ml-1 text-[#ea4335]">*</span>}
           </p>
-          {/* 12 @402 (`1243:2390`) → 18 @1440 (`708:1999`), Regular at both. `fl-18`'s 16 floor
-              was 4px over Figma — the largest type overshoot in the wizard. #808080 = gray-1, and
-              `leading-[normal]` is the font's own 1.511 (18.13 / 12, 27.2 / 18). */}
           <p className="text-[calc(11.844px_+_6.156*var(--fl))] leading-[normal] text-gray-1">
             {description}
           </p>
@@ -126,27 +121,13 @@ function Row({
   )
 }
 
-/**
- * Radio pair styled as the design's 24 check boxes — unchecked is an empty outline.
- *
- * `touched` is what stops the tick drawing itself for a default nobody chose. The row arrives
- * with ยอมรับ pre-selected, so on entry every consent row used to draw its tick at once,
- * unstaggered, over the incoming step transition — the one animation in the flow whose stated
- * job is to say "you decided", firing on page load. It is now set from the change handler, so
- * the tick is simply *there* on arrival and travels only for a real choice. No timing changed.
- */
+/** Radio pair styled as the design's 24 check boxes — unchecked is an empty outline. See the
+ *  note above `AGREEMENT_BOX`: same control, same ramp. */
 function ConsentChoice({ name }: { name: string }) {
   const [value, setValue] = useState<'yes' | 'no'>('yes')
   const [touched, setTouched] = useState(false)
 
   return (
-    /*
-     * BELOW `sm` THE PAIR FILLS THE ROW. `1243:2504` is 278 wide — the row's whole content width —
-     * with its two halves at exactly 139 each and no gap between them, so the choices sit on the
-     * row's two edges rather than bunched at the left. From `sm` up nothing changes: `sm:w-auto`
-     * and `sm:shrink-0` restore the intrinsic box and the gap comes back, reaching Figma's own 40
-     * at `lg` (`724:415`, `724:444`, `724:456` are all `itemSpacing: 40`).
-     */
     <div className="flex w-full items-center sm:w-auto sm:shrink-0 sm:gap-6 lg:gap-10">
       {(
         [
@@ -156,8 +137,6 @@ function ConsentChoice({ name }: { name: string }) {
       ).map(([key, label]) => (
         <label
           key={key}
-          /* 8 @402 (`1243:2505`) → 12 @1440 (`724:409`) between the box and its label; `gap-3` was
-             the 1440 value held flat. `flex-1` is the fill described above. */
           className="mm-press flex flex-1 cursor-pointer items-center gap-[calc(7.896px_+_4.104*var(--fl))] sm:flex-none"
         >
           <input
@@ -170,33 +149,11 @@ function ConsentChoice({ name }: { name: string }) {
             }}
             className="sr-only"
           />
-          {/* the box used to swap fill for outline in one frame, under a tick taking 260ms */}
-          {/*
-           * BOX, RADIUS AND GLYPH, all three ramped, which is the pairing that has to hold: Figma
-           * nests a 12 tick in a 16 square on the 402 frame (`1243:2506` → `1243:2507`) and a 16
-           * tick in a 24 square at 1440 (`722:374` → `722:371`), so the inset is 2 → 4 as well.
-           * `size-6` + `p-1` + `size-4` was all three at their 1440 value, i.e. a 24px control in a
-           * row whose whole content block Figma draws 20 tall down there. Every one lands on its
-           * 1440 value exactly, and `CHECK_MARK` is the shared ramp from Field.tsx so the tick can
-           * never disagree with the one on the team-size caption.
-           *
-           * The RADIUS is the item this pass adds: 4 @402 (`1243:2506`) → 6 @1440 (`722:374`),
-           * where `rounded-[6px]` was the 1440 corner on a box two-thirds the size.
-           *
-           * The unchecked box keeps its border even though Figma gives `1243:2511` / `724:416`
-           * neither a fill nor a stroke — an unstyled empty frame there would render as nothing at
-           * all, which cannot be the intent for the un-selected half of a required choice. Left as
-           * the earlier pass had it, and flagged rather than silently matched.
-           */}
           <span
-            className={`flex size-[calc(15.792px_+_8.208*var(--fl))] shrink-0 items-center justify-center rounded-[calc(3.948px_+_2.052*var(--fl))] p-[calc(1.948px_+_2.052*var(--fl))] transition-colors ${
-              value === key ? 'bg-brand-red' : 'border border-[#dcdcdc]'
-            }`}
+            className={`${AGREEMENT_BOX} ${value === key ? 'bg-brand-red' : 'border border-[#dcdcdc]'}`}
           >
             {value === key && <CheckMark className={`${CHECK_MARK} text-white`} drawn={touched} />}
           </span>
-          {/* 14 @402 (`1243:2509` / `1243:2514`) → 20 @1440 (`724:407` / `724:414`), Regular at
-              both — `fl-20`'s 17 floor was 3px over the phone frame. lh 1.4 at both ends. */}
           <span className="text-[calc(13.844px_+_6.156*var(--fl))] leading-[1.4]">{label}</span>
         </label>
       ))}
@@ -209,104 +166,81 @@ type OpenDoc = { title: string; x: number; y: number }
 
 export default function TermsStep() {
   const [openDoc, setOpenDoc] = useState<OpenDoc | null>(null)
-  const [accepted, setAccepted] = useState<string[]>([])
+  const [agreed, setAgreed] = useState(false)
+  const [agreedTouched, setAgreedTouched] = useState(false)
 
   return (
     <WizardShell
-      step={5}
+      step={1}
       withTomatoes={false}
-      /* the page behind the sheet drops back a hair while it is open */
       receded={openDoc !== null}
-      actions={
-        <>
-          <BackButton to="/register/entrant/2" />
-          <SubmitButton to="/register/success" label="ลงทะเบียนเข้าแข่งขัน" />
-        </>
-      }
-      /* the scrim is `fixed inset-0`, so it has to sit outside the view-transition body */
+      actions={<NextButton to="/register/team" />}
       overlay={
         <PolicyModal
-          document={REQUIRED_DOCUMENTS.find((d) => d.title === openDoc?.title)?.document ?? null}
+          document={AGREEMENT_LINKS[openDoc?.title ?? ''] ?? null}
           origin={openDoc}
           onDecline={() => setOpenDoc(null)}
-          onAccept={() => {
-            if (openDoc) setAccepted((prev) => [...new Set([...prev, openDoc.title])])
-            setOpenDoc(null)
-          }}
+          onAccept={() => setOpenDoc(null)}
         />
       }
     >
-      {/* `gap-6` is FLAT and both anchors agree: `1243:2208` and `708:1993` are each 24 between
-          the documents section and the consents section. */}
+      {/* 24 @1440 (`2053:108`'s outer stack) between the two sections, flat — no phone anchor to
+          ramp it against. */}
       <div className="flex w-full flex-col items-center justify-center gap-6">
-        {/*
-         * A DOWNWARD ramp, and the only one in the wizard: 16 @402 (`1243:2209`) → 12 @1440
-         * (`722:317`). `gap-3` was the 1440 value held flat, so the phone was 4px tight rather
-         * than loose. `gap-5` between the rows is genuinely flat — `1243:2384` and `722:384` are
-         * both 20.
-         */}
-        <section className="flex w-full flex-col items-start justify-center gap-[calc(16.104px_-_4.104*var(--fl))]">
-          {/* 14 @402 (`1243:2382`) → 20 @1440 (`722:316`), Regular at both, #808080 = gray-1.
-              `fl-20`'s 17 floor was 3px over the phone frame. */}
+        <section className="flex w-full flex-col items-start justify-center gap-3">
           <h2 className="text-[calc(13.844px_+_6.156*var(--fl))] leading-[normal] text-gray-1">
-            เอกสารบังคับ
+            ข้อตกลงการเข้าร่วม
           </h2>
-          <div className="flex w-full flex-col items-start gap-5">
-            {REQUIRED_DOCUMENTS.map(({ document, ...doc }) => {
-              const isAccepted = accepted.includes(doc.title)
-              return (
-                <Row key={doc.title} {...doc} padding="p-3" glyph={24}>
-                  <button
-                    type="button"
-                    /* the button's own centre, so the sheet grows from the control the
-                       user actually pressed rather than from the middle of the screen */
-                    onClick={(e) => {
-                      const box = e.currentTarget.getBoundingClientRect()
-                      setOpenDoc({
-                        title: doc.title,
-                        x: box.left + box.width / 2,
-                        y: box.top + box.height / 2,
-                      })
-                    }}
-                    /* `mm-press` matters here more than anywhere: this is the element the
-                       policy sheet measures `--auth-origin-x/y` from, so the sheet grows out
-                       of exactly the control the press has to be felt in. */
-                    /* THREE two-anchor values here, all of which were the 1440 figure held flat.
-                       `1243:2391` is 290x36 on r 8 with `px 24 / py 8` and a 14/400 label;
-                       `708:2000` is 167x52 on r 12 with `px 24 / py 12` and a 20/400 label. So:
-                         radius  8 @402 → 12 @1440
-                         py      8 @402 → 12 @1440
-                         label  14 @402 → 20 @1440   (`fl-20`'s 17 floor was 3px over)
-                       `px-6` is Figma's 24 at BOTH ends and stays flat. The heights fall out
-                       exactly: 8 + 19.6 + 8 = 36 and 12 + 28 + 12 = 52. */
-                    className={`mm-press flex shrink-0 items-center justify-center gap-2 rounded-[calc(7.896px_+_4.104*var(--fl))] px-6 py-[calc(7.896px_+_4.104*var(--fl))] text-[calc(13.844px_+_6.156*var(--fl))] leading-[1.4] transition-colors ${
-                      isAccepted
-                        ? 'bg-brand-red text-white'
-                        : 'bg-brand-red/10 text-brand-red hover:bg-brand-red/20'
-                    }`}
-                  >
-                    {/* accepting a policy in the sheet is a decision, so this one does draw */}
-                    {isAccepted && <CheckMark drawn />}
-                    {isAccepted ? 'ยอมรับแล้ว' : 'อ่านและยอมรับ'}
-                  </button>
-                </Row>
-              )
-            })}
+          {/* the illustration plate + checkbox sentence, one bordered card */}
+          <div className="flex w-full flex-col items-center gap-6 rounded-2xl border border-[#dcdcdc] p-4">
+            <AgreementStack />
+            <label className="flex w-full cursor-pointer items-start gap-4">
+              <input
+                type="checkbox"
+                checked={agreed}
+                onChange={() => {
+                  setAgreed((v) => !v)
+                  setAgreedTouched(true)
+                }}
+                className="sr-only"
+              />
+              <span className={`${AGREEMENT_BOX} ${agreed ? 'bg-brand-red' : 'border border-[#dcdcdc]'}`}>
+                {agreed && <CheckMark className={`${CHECK_MARK} text-white`} drawn={agreedTouched} />}
+              </span>
+              <p className="text-[calc(13.844px_+_6.156*var(--fl))] leading-[1.4]">
+                {AGREEMENT_SEGMENTS.map((seg, i) =>
+                  typeof seg === 'string' ? (
+                    <span key={i}>{seg}</span>
+                  ) : (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={(e) => {
+                        const box = e.currentTarget.getBoundingClientRect()
+                        setOpenDoc({
+                          title: seg.link,
+                          x: box.left + box.width / 2,
+                          y: box.top + box.height / 2,
+                        })
+                      }}
+                      className="text-brand-red underline underline-offset-2"
+                    >
+                      {seg.link}
+                    </button>
+                  ),
+                )}
+              </p>
+            </label>
           </div>
         </section>
 
-        {/* same 16 @402 (`1243:2418`) → 12 @1440 (`722:318`) as the section above */}
-        <section className="flex w-full flex-col items-start justify-center gap-[calc(16.104px_-_4.104*var(--fl))]">
-          {/* 14 @402 (`1243:2419`) → 20 @1440 (`722:319`), as above */}
+        <section className="flex w-full flex-col items-start justify-center gap-3">
           <h2 className="text-[calc(13.844px_+_6.156*var(--fl))] leading-[normal] text-gray-1">
-            ความยินยอมเฉพาะเรื่อง
+            ความยินยอม
           </h2>
           <div className="flex w-full flex-col items-start gap-5">
             {CONSENTS.map((consent, i) => (
-              /* `pr-6` FLAT, not `pr-3 sm:pr-6`: the consent row's 24 of right padding is on the
-                 phone frame too (`1243:2449` / `1243:2466` / `1243:2483` are each `pl 12, pr 24`),
-                 which is what makes its content block 278 wide against the document row's 290. */
-              <Row key={consent.title} {...consent} padding="py-3 pl-3 pr-6" glyph={28}>
+              <Row key={consent.title} {...consent}>
                 <ConsentChoice name={`consent-${i}`} />
               </Row>
             ))}
