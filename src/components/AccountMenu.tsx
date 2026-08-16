@@ -331,12 +331,20 @@ export default function AccountMenu({ className = '' }: { className?: string }) 
               open ? 'translate-y-0' : 'translate-y-1.5'
             }`}
           >
-            {/* `1359:967`: 0.5px #dcdcdc, 174 wide inside a 210 box — i.e. inset to the content
-                width, NOT full-bleed, which is why it is an element with the chip's own
-                20 / 16 margins rather than a border on the panel. Rendered at 1px, the
-                thinnest line a browser paints without dropping it. Desktop only. */}
-            <span aria-hidden className="mr-4 ml-5 hidden h-px bg-[#dcdcdc] sm:block" />
-
+            {/*
+             * `1359:967`'s inset rule is DELIBERATELY not rendered, and the reason is that at the
+             * only width it would have appeared there is already a line in that exact place.
+             *
+             * From `sm` the panel is flush under the chip: `sm:-mt-px` pulls it up by exactly one
+             * pixel so its own top border lands on the chip's bottom border, which is what makes
+             * the two boxes read as one. Adding this element — itself `hidden sm:block`, so it
+             * only ever showed at those same widths — drew a SECOND line a few pixels under the
+             * first. That is the doubled rule the user photographed.
+             *
+             * Below `sm` the panel is detached (`top: 100% + 10px`) and has one menu item, so
+             * there is nothing for an internal divider to separate. Either way the element has
+             * no width at which it is the right answer, so it is gone rather than re-inset.
+             */}
             <button
               ref={itemRef}
               type="button"
