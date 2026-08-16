@@ -24,6 +24,8 @@ import ComingSoon from './pages/ComingSoon'
 import NotFound from './pages/NotFound'
 import { trackAuthNav } from './components/form/wizardNav'
 import { ToastProvider } from './components/toast/ToastProvider'
+import CookieConsent from './components/CookieConsent'
+import ResumeRegistrationModal from './components/ResumeRegistrationModal'
 
 /**
  * The three routes that share `SiteLayout`, and so share the nav and footer DOM.
@@ -221,11 +223,34 @@ function SiteLayout() {
  * affect layout. The one thing that could is the Google webfont on a first cold visit, and a
  * first visit has nothing saved to restore.
  */
+/**
+ * Both consent surfaces are mounted HERE, beside `<ScrollRestoration>`, rather than inside a
+ * page — and for the same two reasons that put `ToastProvider` above the router.
+ *
+ * They have to outlive a route change. `ResumeRegistrationModal` (Figma `2074:3241`) navigates
+ * as part of answering it: "กรอกฟอร์มต่อ" sends the user to the furthest step they reached, and a
+ * dialogue mounted inside the step it navigated away from would unmount itself mid-exit and
+ * delete its own closing animation. It also needs to see EVERY hop to know when the user is
+ * *entering* the flow rather than moving inside it, which only a component above the route tree
+ * can do. `CookieConsent` (Figma `2074:3200`) is the simpler case of the same thing: it is a
+ * site-wide notice, so it must not be torn down and rebuilt — replaying its 400ms entrance —
+ * every time the user opens another page.
+ *
+ * Both portal to `<body>`, so sitting in the layout costs nothing: neither ever renders here.
+ * That portal is also what keeps them clear of the `overflow-clip` on all four page roots and on
+ * the wizard shell, any of which would otherwise crop a `position: fixed` surface raised from
+ * inside it — the note `ToastProvider` already records about its own viewport.
+ *
+ * Inside `RootLayout` and not around `<RouterProvider>`, because the resume dialogue reads
+ * `useLocation()` and calls `useNavigate()`; those hooks need a router above them.
+ */
 function RootLayout() {
   return (
     <>
       <Outlet />
       <ScrollRestoration />
+      <CookieConsent />
+      <ResumeRegistrationModal />
     </>
   )
 }

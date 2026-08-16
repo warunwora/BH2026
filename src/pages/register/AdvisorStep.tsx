@@ -2,9 +2,13 @@ import WizardShell, { BackButton, NextButton } from '../../components/form/Wizar
 import { DocumentRow, Separator } from '../../components/form/Field'
 import PersonFields, { ContactFields } from './PersonFields'
 import { ADVISOR_DOCUMENTS } from '../../registrationData'
+import { useReachedStep } from '../../hooks/useRegisterDraft'
 
 /** Figma 708:1350 / `2053:318` — advisor is now step 3, behind terms and team. */
 export default function AdvisorStep() {
+  /* the resume modal returns the user to the furthest step they reached */
+  useReachedStep(3)
+
   return (
     <WizardShell
       step={3}
@@ -41,9 +45,9 @@ export default function AdvisorStep() {
         </section>
 
         <Separator />
-        <PersonFields title="ข้อมูลอาจารย์" headingGap="gap-5" />
+        <PersonFields draftKey="advisor.person" title="ข้อมูลอาจารย์" headingGap="gap-5" />
         <Separator />
-        <ContactFields />
+        <ContactFields draftKey="advisor.contact" />
       </div>
     </WizardShell>
   )

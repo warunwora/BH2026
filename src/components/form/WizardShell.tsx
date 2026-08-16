@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { AuthTopBar } from '../AccountMenu'
 import { WizardBackdrop } from '../AuthBackdrop'
 import ScrollEdgeEffect from '../ScrollEdgeEffect'
+import { clearRegisterDraft } from '../../hooks/useRegisterDraft'
 import { REGISTER_TYPE_CLASS, RegisterType } from './registerType'
 import {
   GateProvider,
@@ -547,6 +548,10 @@ export function SubmitButton({ to, label }: { to: string; label: string }) {
       onClick={() => {
         if (!validate()) return
         setBusy(true)
+        /* the answers have been committed, so the saved copy is no longer a draft — clearing it
+           here and not on the success screen means a submit that navigates away still leaves
+           nothing behind for the resume modal to offer. */
+        clearRegisterDraft()
         go(to, 'submit')
       }}
       /* keeps its label at every width — it is the commit — so it takes the tighter phone

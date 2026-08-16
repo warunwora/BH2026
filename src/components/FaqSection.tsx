@@ -200,6 +200,28 @@ function FaqRow({
        * well as opening. The 16 gap Figma puts between question and answer lives inside the
        * clipped row as padding — as a flex gap it would survive the collapse and leave a hole
        * under a closed question.
+       *
+       * ------------------------------------------- why the pad is on an INNER box (2026-08-16)
+       *
+       * That 16 used to sit on the grid ITEM (`.mm-collapse > *`), and padding is
+       * incompressible: `min-height: 0` and `overflow: hidden` crush an item's CONTENT to
+       * nothing but they cannot crush its own padding, so the row's used height bottomed out at
+       * 16px instead of 0. Two bugs came out of that one line, and the comment above was
+       * describing a hole it was itself leaving:
+       *
+       *   - every CLOSED question kept a 16px empty band under it — measured
+       *     `grid-template-rows: 16px` on a freshly loaded, never-opened row.
+       *   - closing LOOKED like a snap. Traced frame by frame, the transition does run its full
+       *     220ms, but the track travels 73px -> 16px in the first ~36ms and then sits on the
+       *     16px floor for the remaining ~184ms. Against that, the answer's own opacity and the
+       *     toggle glyph's rotation both ran the full ~210ms, so the copy faded out over a box
+       *     that had already collapsed. Opening was unaffected and took the whole 231ms, which
+       *     is why this read as "animates one way and snaps the other".
+       *
+       * Nesting the pad one box deeper fixes both without touching the shared class: the grid
+       * item is now a bare wrapper that can be crushed to 0, and the 16 lives on a child inside
+       * the clip where it collapses with everything else. `.mm-collapse-lift > *` still matches
+       * the wrapper, so the answer keeps riding down as one gesture.
        */}
       {/*
        * `mm-collapse-lift` is the modifier that makes the answer part of the same gesture as the
@@ -210,12 +232,15 @@ function FaqRow({
        * it. Same `--mm-base` as the track and the toggle's rotation — see micro-motion.css.
        */}
       <dd className={`mm-collapse mm-collapse-lift ${open ? 'is-open' : ''}`}>
-        {/* `font-normal` stated rather than inherited: `1190:1351` is Noto Sans Thai **Regular**,
-            and the answers are the one place on this page where a Description node is NOT set
-            Light. The document root carries no `font-weight`, so 400 was already what resolved
-            here — this pins it against the surrounding `font-light` Descriptions. */}
-        <div className="pt-4 leading-[1.5] font-normal" style={{ fontSize: A_SIZE }}>
-          {faq.a}
+        {/* the crushable grid item — carries no padding of its own, on purpose (see above) */}
+        <div>
+          {/* `font-normal` stated rather than inherited: `1190:1351` is Noto Sans Thai **Regular**,
+              and the answers are the one place on this page where a Description node is NOT set
+              Light. The document root carries no `font-weight`, so 400 was already what resolved
+              here — this pins it against the surrounding `font-light` Descriptions. */}
+          <div className="pt-4 leading-[1.5] font-normal" style={{ fontSize: A_SIZE }}>
+            {faq.a}
+          </div>
         </div>
       </dd>
     </div>

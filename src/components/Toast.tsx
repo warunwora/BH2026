@@ -404,7 +404,25 @@ function useSettle(listRef: React.RefObject<HTMLOListElement | null>) {
       const id = row.dataset.toastId
       if (!id) continue
 
-      const top = row.getBoundingClientRect().top
+      /*
+       * The LAYOUT top, with any in-flight settle's own transform taken back out — and that
+       * subtraction is a FIX, not a refinement.
+       *
+       * `getBoundingClientRect` reports the VISUAL box, so while a settle is running it returns
+       * a position that is still travelling. This effect runs on every render, which includes
+       * the ~24 progress ticks a transfer produces. Measured against the animated box, each of
+       * those ticks saw a "delta" that was nothing but the previous animation's own progress,
+       * cancelled it, and started another from wherever it had reached. Sampled every 40ms at
+       * 402: dismissing the top of three cards while an upload was in flight oscillated
+       * 67.3 → −18.2 → +28.9 → +12.3 → +9.2 → −2.0 → … and did not come to rest for ~1.2s,
+       * against the 220ms the same dismiss takes with nothing else rendering.
+       *
+       * Against the LAYOUT box those ticks find a delta of exactly 0, which is what the skip
+       * below has always assumed and the note under this function has always claimed.
+       */
+      const matrix = getComputedStyle(row).transform
+      const ty = matrix && matrix !== 'none' ? new DOMMatrix(matrix).m42 : 0
+      const top = row.getBoundingClientRect().top - ty
       next.set(id, top)
 
       const was = tops.current.get(id)
@@ -414,11 +432,19 @@ function useSettle(listRef: React.RefObject<HTMLOListElement | null>) {
       // one settle per row: a second dismiss mid-settle must retarget, not compound
       running.current.get(id)?.cancel()
       const { duration, easing } = motionTokens()
+      /*
+       * `+ ty` is what makes that retarget continuous. A row dismissed while it is still
+       * settling from an earlier dismiss is mid-travel, and `was - top` alone is the delta
+       * between two LAYOUT slots — it would snap the row back to the old slot for one frame
+       * before starting. Adding the transform it is actually wearing starts the new animation
+       * from where the row visually IS. With nothing running `ty` is 0 and this is the plain
+       * FLIP delta, byte for byte what it was.
+       */
       running.current.set(
         id,
         row.animate(
           [
-            { transform: `translate3d(0, ${was - top}px, 0)` },
+            { transform: `translate3d(0, ${was - top + ty}px, 0)` },
             { transform: 'translate3d(0, 0, 0)' },
           ],
           { duration, easing },
@@ -442,7 +468,9 @@ function useSettle(listRef: React.RefObject<HTMLOListElement | null>) {
      would let a render that moves a row slip past unrecorded and leave the next settle animating
      from a position that has not been true for four seconds. Progress ticks run through here too
      (~24 per transfer): three `getBoundingClientRect` calls that find no delta and start
-     nothing. */
+     nothing — which is true only because `sample` measures the layout box rather than the
+     animated one. See the note on that subtraction; running on every render is safe, but only
+     against a position the running animation cannot move. */
   useLayoutEffect(() => sample(true))
 
   /**

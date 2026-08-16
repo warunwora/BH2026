@@ -8,10 +8,15 @@ import {
   SectionTitle,
   SelectField,
   TextField,
-  useFieldGroup,
   useFileSlot,
 } from '../../components/form/Field'
 import { useGateField } from '../../components/form/wizardNav'
+import {
+  useDraftRecord,
+  useDraftValue,
+  useDraftFileNote,
+  useReachedStep,
+} from '../../hooks/useRegisterDraft'
 
 const F = '/assets/figma/'
 
@@ -71,7 +76,14 @@ const EMPTY = { name: '', school: '' }
 function TeamDetails() {
   /* the caption says จำกัดขนาดไม่เกิน 5 MB, so 5 MB is what the box enforces */
   const photo = useFileSlot({ kind: 'image', maxMB: 5 })
-  const { bind, clear } = useFieldGroup(EMPTY)
+  /*
+   * A saved draft remembers the photo's NAME, never its bytes — a file input cannot be
+   * rehydrated by any browser, so the slot comes back genuinely empty and still fails its own
+   * gate. The note exists only so the caption can say which file is missing instead of
+   * silently pretending nothing was ever attached.
+   */
+  const photoNote = useDraftFileNote('team.photo', photo.file)
+  const { bind, clear } = useDraftRecord('team.details', EMPTY)
 
   /*
    * Team size is tracked here only so the choice can be *confirmed*: the box used to swap its
@@ -80,7 +92,7 @@ function TeamDetails() {
    * pre-selected and draws it only for a choice the user made — the same rule the consent rows
    * follow (see `.auth-check-path` in styles/auth-motion.css).
    */
-  const [size, setSize] = useState<number | null>(null)
+  const [size, setSize] = useDraftValue<number | null>('team.size', null)
   const [touched, setTouched] = useState(false)
 
   /*
@@ -189,7 +201,9 @@ function TeamDetails() {
             aria-live="polite"
             className={`w-[calc(138.439px_+_61.561*var(--fl))] truncate text-center text-[length:var(--t-12-16)] leading-[normal] ${photo.error ? 'text-[#ea4335]' : 'text-gray-1'}`}
           >
-            {photo.error ?? photo.file?.name ?? 'จำกัดขนาดไม่เกิน 5 MB'}
+            {photo.error ??
+              photo.file?.name ??
+              (photoNote ? `เคยแนบ ${photoNote} — กรุณาแนบอีกครั้ง` : 'จำกัดขนาดไม่เกิน 5 MB')}
           </p>
         </div>
 
@@ -313,6 +327,9 @@ function TeamDetails() {
  * it, so this step gained a back button.
  */
 export default function TeamStep() {
+  /* the resume modal returns the user to the furthest step they reached */
+  useReachedStep(2)
+
   return (
     <WizardShell
       step={2}

@@ -75,9 +75,41 @@ const PANEL_W = 'calc(69.6px + 624.4 * var(--fl))'
  * and Tailwind's scanner only sees class strings it can read literally, so an interpolated
  * `w-[${PANEL_W}]` would never be generated. One source of truth, no `!important`.
  */
+/**
+ * ------------------------------------------------- and why the height is CLAMPED to the fold
+ *
+ * `984 * panel/694` is the box that tracks the art, and on its own it was the one thing on this
+ * screen making the DOCUMENT scroll. The panel is the tallest item in the row, so the row — and
+ * with it `min-h-dvh` — resolved to the panel's height plus the 20 of padding, regardless of how
+ * much room the viewport actually had. Measured before the clamp, and the arithmetic is exactly
+ * `ramp + 40 − viewport` every time:
+ *
+ *   1440x1024   0        (Figma's own frame: 984 + 40 = 1024, nothing to give)
+ *   1440x900    124
+ *   1440x600    424
+ *   1280x600    291
+ *   1024x600     78
+ *
+ * — i.e. at 1440x600 the Google button, the one control this screen exists for, sat 424px below
+ * the fold behind a page scroll, on the one route in the flow that is otherwise `h-dvh`
+ * throughout. Every other screen here (`AuthPageShell`, `WizardShell`) is bounded to the
+ * viewport and scrolls its CONTENT; this was the outlier.
+ *
+ * The clamp costs nothing anywhere it is not needed, and NOTHING AT 1440x1024: `min()` picks the
+ * ramp whenever the viewport can hold it, so Figma's anchor renders byte-identically. It is also
+ * the only length that has to change, because the collage inside is `position: absolute` and
+ * scaled from its own top-left — the panel's height positions the art (the row is `items-center`)
+ * but never sizes it, so a shorter panel draws the same composition from the same top edge and
+ * lets the bottom fall past the fold, where the root's `overflow-clip` takes it. That is what a
+ * short viewport does to this art at any width already.
+ *
+ * `100dvh` rather than a percentage: a percentage height on a flex item resolves against a
+ * container whose own height is indefinite under `min-h-dvh`, which is exactly the case that
+ * would silently fall back to `auto`. `- 40px` is the row's `p-5` top and bottom.
+ */
 const PANEL: React.CSSProperties = {
   width: PANEL_W,
-  height: 'calc(98.6px + 885.4 * var(--fl))', // 984 * panel/694, so the box tracks the art
+  height: 'min(calc(98.6px + 885.4 * var(--fl)), calc(100dvh - 40px))',
 }
 
 /**

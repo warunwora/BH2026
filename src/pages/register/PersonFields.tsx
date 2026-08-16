@@ -4,9 +4,9 @@ import {
   SectionTitle,
   TextArea,
   TextField,
-  useFieldGroup,
 } from '../../components/form/Field'
 import { PREFIX_OPTIONS } from '../../registrationData'
+import { useDraftRecord } from '../../hooks/useRegisterDraft'
 
 /**
  * Figma's field rows: a 24 gap, with the prefix select fixed at 140 wide.
@@ -83,10 +83,26 @@ const EMPTY_CONTACT = { email: '', phone: '', line: '' }
  * when it carries the prop, so the mark and the rule are one declaration and cannot drift into
  * disagreeing — which is exactly how an asterisk ends up decorative.
  *
- * Worth a second opinion from the user: Figma marks ประเภทอาหารพิเศษ, ยาที่แพ้, โรคประจำตัว
- * and LINE ID required, which reads more like every label being copied from one component
- * than like a decision that a registrant with no allergies cannot proceed. Relaxing any of
- * them is now deleting one `required` prop.
+ * WHICH FIELDS ARE REQUIRED — settled 2026-08-16, and the first reading of it was WRONG.
+ *
+ * An earlier pass reported that Figma marks nearly every label required, including the four
+ * health fields and LINE ID, and the code was changed to match. It does not. Every label in
+ * these steps carries a `Required Indicator` child, but five of them are **`visible: false`** —
+ * the component ships the asterisk and the designer switches it off per instance. Counting the
+ * node's existence rather than reading its `visible` flag is what produced the false reading.
+ *
+ * Read from `2053:498` (entrant), and `2053:318` (advisor) agrees:
+ *
+ *   required        คำนำหน้า, ชื่อจริง/นามสกุล (ไทย), Title, First/Last Name,
+ *                   วัน/เดือน/ปีเกิด, อีเมล, เบอร์โทรศัพท์
+ *   NOT required    อาหารที่แพ้ (2053:636), ประเภทอาหารพิเศษ (642), ยาที่แพ้ (648),
+ *                   โรคประจำตัว (654), LINE ID (682)
+ *
+ * This was not cosmetic. `required` drives BOTH the asterisk and the gate, so the validation
+ * pass was refusing to advance anyone who had no food allergy, no special diet, no drug allergy
+ * and no medical condition to declare — i.e. most entrants — and sending them back to a field
+ * they had nothing to write in. Leaving these optional is also the only defensible reading:
+ * health information is volunteered, and demanding it is a different decision from collecting it.
  */
 
 /**
@@ -110,25 +126,32 @@ const EMPTY_CONTACT = { email: '', phone: '', line: '' }
  * three health placeholders, the ปฐมพยาบาล textarea) is identical on the two frames and stays
  * shared, so only the pair that actually differs is passed in.
  */
-const ADVISOR_NAMES = { firstTh: 'นพนภา', firstEn: 'Nopnapa' }
-const ENTRANT_NAMES = { firstTh: 'มดแฮก', firstEn: 'Modhack' }
-
-export { ADVISOR_NAMES, ENTRANT_NAMES }
+export const ADVISOR_NAMES = { firstTh: 'นพนภา', firstEn: 'Nopnapa' }
+export const ENTRANT_NAMES = { firstTh: 'มดแฮก', firstEn: 'Modhack' }
 
 export default function PersonFields({
   title,
   withBirthDate = false,
   headingGap = 'gap-6',
   names = ADVISOR_NAMES,
+  draftKey,
 }: {
   title: string
   withBirthDate?: boolean
   headingGap?: string
   names?: { firstTh: string; firstEn: string }
+  /**
+   * Where this block's answers are saved. Passed IN rather than derived, because one component
+   * serves the advisor and both entrants — anything derived from `title` or from a render
+   * counter would give entrant 1 and entrant 2 the same key and let each overwrite the other.
+   */
+  draftKey: string
 }) {
   /* the gate needs no wiring here: an unrendered control registers nothing, so an advisor
      block — which never mounts the date of birth — is never gated on one */
-  const { bind, clear } = useFieldGroup(EMPTY_PERSON)
+  /* `useDraftRecord` is `useFieldGroup` plus persistence and a whole-record setter; the
+     absence of that setter is what made restoring a saved step impossible before. */
+  const { bind, clear } = useDraftRecord(draftKey, EMPTY_PERSON)
 
   return (
     <section className={`flex w-full flex-col items-center justify-center ${headingGap}`}>
@@ -200,21 +223,18 @@ export default function PersonFields({
           )}
           <TextField
             label="อาหารที่แพ้"
-            required
             placeholder="เช่น กุ้ง, ถั่วลิสง"
             className={CELL}
             {...bind('foodAllergy')}
           />
           <TextField
             label="ประเภทอาหารพิเศษ"
-            required
             placeholder="เช่น อาหารมุสลิม, มังสวิรัติ"
             className={CELL}
             {...bind('specialDiet')}
           />
           <TextField
             label="ยาที่แพ้"
-            required
             placeholder="เช่น เพนิซิลลิน"
             className={CELL}
             {...bind('drugAllergy')}
@@ -223,7 +243,6 @@ export default function PersonFields({
 
         <TextArea
           label="โรคประจำตัว และวิธีปฐมพยาบาลเบื้องต้น"
-          required
           placeholder="ระบุโรคประจำตัวและวิธีปฐมพยาบาลเบื้องต้น"
           {...bind('conditions')}
         />
@@ -232,14 +251,15 @@ export default function PersonFields({
   )
 }
 
-export function ContactFields() {
-  const { bind, clear } = useFieldGroup(EMPTY_CONTACT)
+export function ContactFields({ draftKey }: { draftKey: string }) {
+  const { bind, clear } = useDraftRecord(draftKey, EMPTY_CONTACT)
 
   return (
     <section className="flex w-full flex-col items-center justify-center gap-6">
       <SectionTitle title="ช่องทางติดต่อ" onClear={clear} />
       {/* `2053:476` / `2053:482` / `2053:488` — the email placeholder is Figma's own address,
-          not "example@email.com", and LINE ID carries a `*` (`2053:486`) the code omitted. */}
+          not "example@email.com". LINE ID's own `*` (`2053:486`) is `visible: false`, so it is
+          optional; see the note above on why the indicator's existence is not the signal. */}
       <div className={ROW}>
         <TextField
           label="อีเมล"
@@ -255,13 +275,7 @@ export function ContactFields() {
           className={CELL}
           {...bind('phone')}
         />
-        <TextField
-          label="LINE ID"
-          required
-          placeholder="ไอดีไลน์"
-          className={CELL}
-          {...bind('line')}
-        />
+        <TextField label="LINE ID" placeholder="ไอดีไลน์" className={CELL} {...bind('line')} />
       </div>
     </section>
   )

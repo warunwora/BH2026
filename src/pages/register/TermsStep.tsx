@@ -3,6 +3,7 @@ import WizardShell, { NextButton } from '../../components/form/WizardShell'
 import { CHECK_MARK, CheckMark } from '../../components/form/Field'
 import { useGateField } from '../../components/form/wizardNav'
 import PolicyModal from '../../components/PolicyModal'
+import { useDraftValue, useReachedStep } from '../../hooks/useRegisterDraft'
 import { AGREEMENT_LINKS, CONSENTS } from '../../registrationData'
 
 /**
@@ -264,14 +265,19 @@ function Row({
 function ConsentRow({
   consent,
   index,
-  value,
-  onChange,
+  draftKey,
 }: {
   consent: (typeof CONSENTS)[number]
   index: number
-  value: 'yes' | 'no' | null
-  onChange: (value: 'yes' | 'no') => void
+  /**
+   * This row's own saved answer. The step used to hold all of them in one array and pass a
+   * value/onChange pair down; the array was the problem, not the lifting — it is POSITIONAL, so
+   * the day a consent is inserted every stored answer silently belongs to the wrong question.
+   * One key per row survives the list changing shape.
+   */
+  draftKey: string
 }) {
+  const [value, onChange] = useDraftValue<'yes' | 'no' | null>(draftKey, null)
   const gate = useGateField<HTMLDivElement>(
     consent.required && value !== 'yes' ? `ต้องยอมรับ${consent.title}เพื่อดำเนินการต่อ` : null,
   )
@@ -374,7 +380,7 @@ function AgreementCard({
   closed: boolean
   onOpenDoc: (doc: OpenDoc) => void
 }) {
-  const [agreed, setAgreed] = useState(false)
+  const [agreed, setAgreed] = useDraftValue<boolean>('terms.agreed', false)
   const [agreedTouched, setAgreedTouched] = useState(false)
 
   /* the focus target is the `sr-only` `<input>` itself — a real focusable control, so a press
@@ -404,7 +410,7 @@ function AgreementCard({
             aria-invalid={agreeGate.invalid || undefined}
             aria-describedby={agreeGate.message ? agreeGate.messageId : undefined}
             onChange={() => {
-              setAgreed((v) => !v)
+              setAgreed(!agreed)
               setAgreedTouched(true)
             }}
             className="sr-only"
@@ -452,8 +458,10 @@ function AgreementCard({
 }
 
 export default function TermsStep() {
+  /* the resume modal returns the user to the furthest step they reached */
+  useReachedStep(1)
+
   const [openDoc, setOpenDoc] = useState<OpenDoc | null>(null)
-  const [answers, setAnswers] = useState<('yes' | 'no' | null)[]>(() => CONSENTS.map(() => null))
 
   return (
     <WizardShell
@@ -483,8 +491,9 @@ export default function TermsStep() {
                 key={consent.title}
                 consent={consent}
                 index={i}
-                value={answers[i]}
-                onChange={(next) => setAnswers((prev) => prev.map((v, j) => (i === j ? next : v)))}
+                /* keyed per row, NOT as one array: a saved array is positional, so inserting a
+                   consent later would silently hand every stored answer to the wrong question. */
+                draftKey={`terms.consent.${i}`}
               />
             ))}
           </div>

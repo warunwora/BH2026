@@ -7,6 +7,7 @@ import WizardShell, {
 import { DocumentRow, Separator } from '../../components/form/Field'
 import PersonFields, { ContactFields, ENTRANT_NAMES } from './PersonFields'
 import { STUDENT_DOCUMENTS } from '../../registrationData'
+import { useReachedStep } from '../../hooks/useRegisterDraft'
 
 /**
  * Figma 708:1540 / `2053:498` — entrant 1 is step 4, `2053:694` — entrant 2 step 5, same form.
@@ -20,6 +21,9 @@ import { STUDENT_DOCUMENTS } from '../../registrationData'
 export default function EntrantStep() {
   const { index } = useParams()
   const n = index === '2' ? 2 : 1
+
+  /* the resume modal returns the user to the furthest step they reached; entrant 2 is step 5 */
+  useReachedStep(n === 2 ? 5 : 4)
 
   return (
     <WizardShell
@@ -64,12 +68,13 @@ export default function EntrantStep() {
             `มดแฮก` / `Modhack` (`2053:596` / `2053:617`) where the advisor is `นพนภา` / `Nopnapa`.
             The surnames match, so only the pair that differs is passed — see PersonFields. */}
         <PersonFields
+          draftKey={`entrant.${n}.person`}
           title={`ข้อมูลผู้เข้าแข่งขันคนที่ ${n}`}
           withBirthDate
           names={ENTRANT_NAMES}
         />
         <Separator />
-        <ContactFields />
+        <ContactFields draftKey={`entrant.${n}.contact`} />
       </div>
     </WizardShell>
   )
