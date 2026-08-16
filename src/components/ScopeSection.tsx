@@ -1,5 +1,8 @@
+import { useCallback, useState } from 'react'
 import ScopeCardArt, { ramp } from './ScopeCardArt'
 import { SCOPE_CARDS, SCOPE_INTRO } from '../aboutData'
+import { SCOPE_CATEGORIES } from '../scopeContent'
+import ScopeModal from './ScopeModal'
 import { useReveal } from '../hooks/useReveal'
 
 /**
@@ -11,12 +14,17 @@ import { useReveal } from '../hooks/useReveal'
 const BAND = ramp(101, 201)
 
 /**
- * The folder panel's floor. Figma's folder is 250 tall on the first two 1440 cards
- * (`708:516` / `708:616`) and 248 on the third (`708:687`); all three are 199 on the phone
- * frame (`1190:999` / `1190:1099` / `1190:1170`). Held as a MIN rather than a height so the
- * panel still grows when the copy wraps to another line on a narrow card.
+ * The folder panel's floor. Figma's six folders are all 250 tall on the 1440 frame
+ * (`2074:2608` and its five siblings) against 199 on the phone frame (`1190:999`). It used to
+ * be a per-card number, because the three-card frame drew its third folder 248; the new frame
+ * has no such odd one out, so the floor is one value again.
+ *
+ * Held as a MIN rather than a height so the panel still grows when the copy wraps to another
+ * line on a narrow card — which is now the common case rather than the exception, since five of
+ * the six titles take two lines at 1440 (`2074:2622` and friends are 78 tall where card 1's
+ * `2074:2611` is 39).
  */
-const folderFloor = (h: number) => ramp(199, h)
+const FOLDER_FLOOR = ramp(199, 250)
 
 /**
  * One card, revealing itself.
@@ -37,8 +45,19 @@ const folderFloor = (h: number) => ramp(199, h)
  * `transition-property`: as a longhand it also postponed this card's own hover lift by up to
  * 140ms.
  */
-function ScopeCard({ card, i }: { card: (typeof SCOPE_CARDS)[number]; i: number }) {
+function ScopeCard({
+  card,
+  i,
+  onOpen,
+}: {
+  card: (typeof SCOPE_CARDS)[number]
+  i: number
+  onOpen: (i: number, origin: { x: number; y: number }) => void
+}) {
   const reveal = useReveal<HTMLElement>()
+  /* the card's words and its count live with the document it opens — see aboutData.ts */
+  const cat = SCOPE_CATEGORIES[i]
+  const headingId = `scope-card-${cat.n}`
 
   return (
     <article
@@ -53,17 +72,16 @@ function ScopeCard({ card, i }: { card: (typeof SCOPE_CARDS)[number]; i: number 
           containerType: 'inline-size',
         } as React.CSSProperties
       }
-      /* these carry a "go" arrow in their footer, so they read as reachable —
-         the lift is what confirms it before anything is wired up
+      /* these carry a "go" arrow in their footer, so they read as reachable — and now they
+         genuinely are: the whole card opens the category's document (see the button below).
 
-         There are three cards and the middle band is two columns wide, so the third
-         sat alone in the left half of a row with 430px of nothing beside it. It is
-         given both columns and half their width instead, which centres it and turns
-         the row into a deliberate 2-over-1 rather than an orphan. Three columns would
-         have been the other way out, but at 768 that is a 197-wide card — half the
-         width the folder's two lines of copy need — where two-up is 311. (The doodle
-         band no longer argues either way; it scales with the card. The copy still
-         does.) */
+         The 2-over-1 special case that used to live here is GONE, and its removal is the
+         whole point of the change. With three cards the middle band was two columns wide, so
+         the third sat alone in the left half of a row with 430px of nothing beside it, and it
+         was given both columns and half their width to centre it. Six cards divide evenly by
+         both column counts — 3x2 at `lg` (Figma's own `2074:2605`, a 1200x942 block of two
+         373x451 rows 40 apart) and 2x3 at `md` — so there is no orphan to arrange and every
+         card is the same width again. */
       /* No `lg:h-[451px]` any more. 451 IS `201 + 250` — the band plus the folder — and
          both of those now ramp, so the height follows them and still comes to 451 at 1440,
          where each is at its Figma anchor and the copy (216 tall in a 333 measure) sits
@@ -73,21 +91,27 @@ function ScopeCard({ card, i }: { card: (typeof SCOPE_CARDS)[number]; i: number 
          1440 one. Grid items stretch, so the three still share the tallest one's height
          exactly as they did. */
       /* `rounded-2xl` (16) is FLAT on purpose: read live 2026-08-06, `1190:974` and
-         `708:491` are both `rounded-[16px]`, so this is the one card radius on the site that
-         does not ramp. The folder panel below is 20 pad / 4 gap / 12 footer gap / 24 arrow on
-         both frames too (`1190:999` vs `708:516`), which is why none of those ramp either. */
-      className={`mm-lift relative overflow-hidden rounded-2xl bg-white shadow-soft ${
-        i === SCOPE_CARDS.length - 1
-          ? 'md:col-span-2 md:mx-auto md:w-[calc(50%_-_(12px_+_8*var(--fl)))] lg:col-span-1 lg:mx-0 lg:w-auto'
-          : ''
-      } ${reveal.cls}`}
+         `708:491` are both `rounded-[16px]`, and `2074:2606` still is, so this is the one card
+         radius on the site that does not ramp. The folder panel below keeps its 20 of side and
+         bottom pad, its 4 gap, its 12 footer gap and its 24 arrow flat for the same reason
+         (`1190:999` vs `708:516`). Its TOP pad is now the one exception — the new frame raises
+         it to 40 (`2074:2607`) — so that one ramps and the other three do not. */
+      className={`mm-lift relative overflow-hidden rounded-2xl bg-white shadow-soft ${reveal.cls}`}
     >
       <ScopeCardArt items={card.art} outlines={card.outlines} />
       {/* Figma reserves the doodle band above the folder — 201 at 1440, 101 at 402 */}
       <div aria-hidden style={{ height: BAND }} />
       <div
-        className="relative flex flex-col justify-between gap-6 p-5 text-white"
-        style={{ minHeight: folderFloor(card.folderHeight) }}
+        /*
+         * `pt` is a ramp where the other three pads stay flat 20, and that is Figma's own
+         * asymmetry rather than an invention: `2074:2607` sets `padding 40 20 20 20`, so the
+         * new card holds its title 40 below the folder's lip where the three-card frame held
+         * it at 20 (`708:516`). The extra 20 is what keeps the title clear of the folder's
+         * raised tab. There is no 402 frame for this card, so the narrow anchor stays the
+         * phone frame's measured 20 (`1190:999`) and the ramp closes the difference.
+         */
+        className="relative flex flex-col justify-between gap-6 px-5 pb-5 text-white"
+        style={{ minHeight: FOLDER_FLOOR, paddingTop: ramp(20, 40) }}
       >
         {/* the folder silhouette carries the card's colour; stretched so the panel
             can still grow past 250 when the copy wraps on a narrow screen */}
@@ -119,15 +143,37 @@ function ScopeCard({ card, i }: { card: (typeof SCOPE_CARDS)[number]; i: number 
          * carried over as if verified; REST says all three desktop cards draw 30 and 20. See the
          * two notes on the count and the label below for the readings.
          */}
+        {/*
+         * The title block is a DIFFERENT pair from the one this card used to draw, and the
+         * change is the reason the modal reads as coming out of the card at all.
+         *
+         * It was a Thai heading over a sentence of body copy ("คณิตศาสตร์" over "ครอบคลุมเลขคณิต
+         * เรขาคณิต …"). `2074:2609` replaces that with the category's ENGLISH name over its THAI
+         * name — 16/22.4 Light above 28/39.2 Medium, 4 apart — and `2074:2971`, the modal's
+         * folder tab, draws the identical block at the identical two sizes and gap. One block
+         * on both, so the thing the user pressed is still in front of them when the sheet has
+         * finished opening. The prose is not lost: it is the category's `intro`, which belongs
+         * with the document rather than on the card.
+         *
+         * Neither size has a 402 anchor — Figma drew no phone frame for the new card — so both
+         * narrow ends are inferred and are SHARED with the modal's tab, which is what keeps the
+         * pair identical at every width rather than only at 1440.
+         */}
         <div className="relative flex flex-col gap-1">
-          {/* 24 @402 (1190:1002) -> 23 @1440 */}
-          <h3 className="text-[calc(24.026px_-_1.026*var(--fl))] leading-[1.4] font-medium">
-            {card.title}
-          </h3>
-          {/* 16 @402 (1190:1003) -> 19 @1440 */}
-          <p className="text-[calc(15.922px_+_3.078*var(--fl))] leading-[1.4] font-light">
-            {card.body}
+          {/* 16 @1440 (2074:2610) — inferred 14 at 402, the same rank the policy reader's body
+              takes there. `gap-1` is Figma's 4. */}
+          <p className="leading-[1.4] font-light" style={{ fontSize: ramp(14, 16) }}>
+            {cat.en}
           </p>
+          {/* 28 @1440 (2074:2611) — inferred 20 at 402. The heading stays an `<h3>`: these six
+              are the section's sub-headings and a screen reader's outline needs them. */}
+          <h3
+            id={headingId}
+            className="leading-[1.4] font-medium"
+            style={{ fontSize: ramp(20, 28) }}
+          >
+            {cat.th}
+          </h3>
         </div>
         <p className="relative flex items-center gap-3">
           {/*
@@ -136,8 +182,11 @@ function ScopeCard({ card, i }: { card: (typeof SCOPE_CARDS)[number]; i: number 
            * three phone counts are 24 (`1190:1005` / `1190:1105` / `1190:1176`). Both anchors
            * are unanimous across the three cards, so there is nothing to arbitrate here.
            */}
+          {/* DERIVED, not transcribed: the count is how many `1.x` sub-sections the document
+              behind this card actually has, so the two can never drift. Figma's own six cards
+              read 4/3/5/5/5/5, whose last two are placeholder copy — see scopeContent.ts. */}
           <span className="text-[calc(23.844px_+_6.156*var(--fl))] leading-[1.4]">
-            {card.count}
+            {cat.groups.length}
           </span>
           {/*
            * FLAT 20, and this one IS an arbitration — Figma disagrees with itself.
@@ -170,6 +219,34 @@ function ScopeCard({ card, i }: { card: (typeof SCOPE_CARDS)[number]; i: number 
           />
         </p>
       </div>
+      {/*
+       * The card's control. A full-bleed button rather than the `<article>` itself being one,
+       * because a `<button>` may only contain phrasing content and this card holds an `<h3>` —
+       * the six headings are the section's outline and a screen reader needs them to stay
+       * headings. `aria-labelledby` gives the button that heading as its accessible name, so
+       * the control announces "คณิตศาสตร์เชิงคำนวณ, button" instead of nothing at all.
+       *
+       * It also keeps the hover story intact: `.mm-lift` is on the article and `.mm-nudge` pairs
+       * with it (micro-motion.css), and pointing at a descendant hovers its ancestor, so the
+       * card still lifts and the arrow still leans — now with something behind the promise.
+       *
+       * `outline-offset` is NEGATIVE. The site's one focus ring (index.css) draws 3px OUTSIDE
+       * the control, and this control is the full bleed of a card that clips its own overflow,
+       * so an outside ring would be cut away on all four sides. Drawn 4px inside it clears the
+       * corner radius and stays visible. The colour is the card's own rather than the ring's
+       * usual `currentColor`, which would be white here — invisible against the white doodle
+       * band that is half of what the button covers.
+       */}
+      <button
+        type="button"
+        aria-labelledby={headingId}
+        onClick={(e) => {
+          const box = e.currentTarget.getBoundingClientRect()
+          onOpen(i, { x: box.left + box.width / 2, y: box.top + box.height / 2 })
+        }}
+        className="absolute inset-0 z-20 cursor-pointer rounded-2xl focus-visible:outline-offset-[-4px]"
+        style={{ outlineColor: card.color }}
+      />
     </article>
   )
 }
@@ -181,6 +258,25 @@ function ScopeCard({ card, i }: { card: (typeof SCOPE_CARDS)[number]; i: number 
  */
 export default function ScopeSection() {
   const head = useReveal()
+
+  /*
+   * Which category's document is open, and the point the sheet grows out of.
+   *
+   * `origin` is set ONLY when a card is pressed and is deliberately not cleared on close: the
+   * sheet's exit shrinks back towards it, so it has to outlive the close by one animation. It is
+   * also not updated when the reader's pager changes category — the sheet is already open and
+   * has not moved, and re-pointing it would make the exit retreat into a card the user never
+   * pressed. `ScopeModal` records the matching half of this.
+   */
+  const [open, setOpen] = useState<number | null>(null)
+  const [origin, setOrigin] = useState<{ x: number; y: number } | null>(null)
+
+  /* stable identities so the six cards do not all re-render when one opens */
+  const onOpen = useCallback((i: number, at: { x: number; y: number }) => {
+    setOrigin(at)
+    setOpen(i)
+  }, [])
+  const onClose = useCallback(() => setOpen(null), [])
 
   return (
     <section id="scope" className="shell sec-scope relative">
@@ -290,7 +386,7 @@ export default function ScopeSection() {
                   ceiling — the type ladder in index.css is calibrated against /register at
                   1440 and owns that end. */}
               <span className="leading-[1.4] font-bold whitespace-nowrap text-[calc(15.922px_+_3.078*var(--fl))]">
-                ดาวน์โหลดฉบับเต็ม (PDF)
+                ดาวน์โหลด
               </span>
             </a>
           </div>
@@ -311,10 +407,21 @@ export default function ScopeSection() {
          */}
         <div className="grid gap-[calc(24px_+_16*var(--fl))] md:grid-cols-2 lg:grid-cols-3">
           {SCOPE_CARDS.map((card, i) => (
-            <ScopeCard key={card.title} card={card} i={i} />
+            <ScopeCard key={SCOPE_CATEGORIES[i].n} card={card} i={i} onOpen={onOpen} />
           ))}
         </div>
       </div>
+
+      {/*
+       * The reader. Mounted here rather than at the page root because it belongs to this
+       * section's cards, and it renders `null` until one of them is pressed — so the six
+       * documents are not in the DOM on a page load that never opens one.
+       *
+       * It is INSIDE the section but its scrim is `position: fixed`, so it escapes this
+       * section's stacking context to cover the viewport. The section itself is only
+       * `relative`, with no transform or filter, so there is nothing here to trap it.
+       */}
+      <ScopeModal index={open} origin={origin} onSelect={setOpen} onClose={onClose} />
     </section>
   )
 }

@@ -842,17 +842,44 @@ function Narrow() {
           <GarlicBand x={0} y={0} />
         </div>
       )}
+    </div>
+  )
+}
 
-      {/*
-       * The tomatoes and the pots, pinned to the page's foot. The stage is the window from
-       * the tomatoes' own top (page 4515) down to the frame's bottom edge (4888), scaled
-       * about that bottom edge — so what runs past it, which in Figma is cut by the frame,
-       * is cut here by the canvas instead, at the same place proportionally.
-       */}
-      <div className="decor-stage absolute bottom-0 left-1/2 h-[373px] w-[1440px] origin-bottom -translate-x-1/2">
-        <Props items={POTS} x={1031} y={66} />
-        <Props items={TOMATOES} x={-149.69} y={0} />
-      </div>
+/**
+ * The tomatoes and the pots, hung off the page's own foot at EVERY width from 431 up.
+ *
+ * This used to live inside `<Narrow>`, i.e. behind `min-[1440px]:hidden`, with the 1440-and-up
+ * branch drawing the same two piles from `Canvas`'s pinned canvas at their Figma page y (4515.094
+ * and 4581). That split was correct only while the page's own stack came to the background
+ * frame's 4888 at 1440 — which is exactly what `About.tsx`'s `min-h-[4888px]` floor was there to
+ * guarantee, and exactly what the sixth scope card broke.
+ *
+ * Six cards are two rows of 451 where there was one, plus the 40 between them, so the section is
+ * 491 taller at 1440 and the page is ~5379 rather than ~4888. The floor is a MIN, so it stops
+ * applying and the wrapper simply becomes as tall as its content — but the two pinned piles do
+ * not follow it. Pots at page y 4581 would have sat 798px above the page's bottom edge instead of
+ * 307: a heap of stock pots and four tomatoes floating in the middle of the contact section,
+ * several hundred pixels clear of the address plate they belong beside. That is the same class of
+ * defect as the doubled cream field this file's own notes describe — art pinned to a page
+ * coordinate that the content underneath it no longer agrees with.
+ *
+ * Hanging both off the bottom edge fixes it once, for every width, and removes the discontinuity
+ * at 1440 rather than moving it: at 1440 exactly the two paths were already the same drawing
+ * (`--decor-fit` is 1 there and the wrapper's bottom is where the footer starts at every width),
+ * which is what makes this a deletion of the special case rather than a new one. Above 1440 the
+ * stage stays 1440 wide and centred, as it was.
+ */
+function Ground() {
+  return (
+    /*
+     * The stage is the window from the tomatoes' own top (page 4515) down to the frame's bottom
+     * edge (4888), scaled about that bottom edge — so what runs past it, which in Figma is cut
+     * by the frame, is cut here by the canvas instead, at the same place proportionally.
+     */
+    <div className="decor-stage absolute bottom-0 left-1/2 hidden h-[373px] w-[1440px] origin-bottom -translate-x-1/2 min-[431px]:block">
+      <Props items={POTS} x={1031} y={66} />
+      <Props items={TOMATOES} x={-149.69} y={0} />
     </div>
   )
 }
@@ -867,15 +894,16 @@ export function AboutDecor() {
       narrow={
         <>
           <Phone />
+          {/* the pots and tomatoes, at every width from 431 up — see `Ground` for why they are
+              no longer pinned at a page y above 1440 */}
+          <Ground />
           <Narrow />
         </>
       }
     >
-      {/* Frame paint order, bottom-most first: pots, tomatoes, pasta (`EdgeNapkins`, painted
-          by `Canvas` itself from `lg` up since it pins to the viewport, not this canvas),
-          garlic, wash. */}
-      <Props items={POTS} x={1031} y={4581} />
-      <Props items={TOMATOES} x={-149.69} y={4515.094} />
+      {/* Frame paint order, bottom-most first: pots and tomatoes (now `Ground`, hung off the
+          page's foot rather than pinned here), pasta (`EdgeNapkins`, painted by `Canvas` itself
+          from `lg` up since it pins to the viewport, not this canvas), garlic, wash. */}
       {/*
        * ------------------------------------------- the cream field is NOT painted here
        *

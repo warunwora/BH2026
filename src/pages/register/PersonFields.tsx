@@ -9,18 +9,28 @@ import {
 import { PREFIX_OPTIONS } from '../../registrationData'
 
 /**
- * Figma's field rows: a 24 gap, with the prefix select fixed at 100 wide.
+ * Figma's field rows: a 24 gap, with the prefix select fixed at 140 wide.
  *
- * THREE shapes, not two. The row is Figma's own four-across from `lg` up, and one field per
- * line on a phone, which is what `1297:1480` draws — but between those two there used to be
- * nothing, so an iPad spent the whole 768 … 1023 band rendering the phone layout: twenty-odd
- * full-width controls stacked down a 992-wide card, each one three times wider than its
- * content needs, with the page four screens long. A 2-up grid at `md` is the same row Figma
- * draws, folded once, and it costs no new decision — the cells are already `w-full`, so each
- * one simply fills its track.
+ * THREE shapes, not two. The row is Figma's own three- or four-across from `lg` up, and one
+ * field per line on a phone, which is what `1297:1480` draws — but between those two there
+ * used to be nothing, so an iPad spent the whole 768 … 1023 band rendering the phone layout:
+ * twenty-odd full-width controls stacked down a 992-wide card, each one three times wider
+ * than its content needs, with the page four screens long. A 2-up grid at `md` is the same
+ * row Figma draws, folded once, and it costs no new decision — the cells are already
+ * `w-full`, so each one simply fills its track.
+ *
+ * PREFIX was `lg:w-[100px]` and Figma draws 140: `2053:395` / `2053:416` (advisor) and
+ * `2053:583` / `2053:604` (entrant) are each 140 wide. That number is what makes the rest of
+ * the row exact — the content column is 992, so 140 + 24 + 402 + 24 + 402 = 992 to the pixel,
+ * and the two `flex-1` cells beside it land on Figma's 402 with nothing to state.
+ *
+ * The equal-cell rows fall out of the same arithmetic: three `flex-1` cells in 992 on a 24
+ * gap are 314.67 each (`2053:437` / `2053:443` / `2053:449`, and the three contact fields),
+ * four are 230 each (`2053:625` … `2053:645`, the entrant's date + health row). Both are
+ * Figma's own widths, reached without a single hard-coded number.
  */
 const ROW = 'grid w-full grid-cols-1 gap-6 md:grid-cols-2 lg:flex lg:flex-row lg:items-start'
-const PREFIX = 'w-full lg:w-[100px] lg:shrink-0'
+const PREFIX = 'w-full lg:w-[140px] lg:shrink-0'
 const CELL = 'w-full lg:flex-1 lg:min-w-0'
 
 /*
@@ -32,14 +42,23 @@ const CELL = 'w-full lg:flex-1 lg:min-w-0'
  * and clearing a key that no control is bound to is harmless, whereas making the record
  * conditional would make `empty` a new object on every render.
  */
+/**
+ * NO MIDDLE NAME, in either script. `2053:394` (advisor Thai), `2053:415` (advisor English),
+ * `2053:582` (entrant Thai) and `2053:603` (entrant English) each hold exactly THREE cells —
+ * 140 + 402 + 402 — and none of the four has a "ชื่อกลาง" / "Middle Name" between them. The
+ * two extra controls were also what broke the row's widths: four `flex-1` cells beside a
+ * prefix divide the 992 column into 262.67 each, where Figma draws 402.
+ *
+ * Flagged rather than assumed: this DROPS two inputs a registrant could previously fill in.
+ * Every 2053 step frame agrees, so it is the design, but if the middle name has to come back
+ * it is two `TextField`s and two keys here — and the row widths then stop matching the frame.
+ */
 const EMPTY_PERSON = {
   prefixTh: '',
   firstTh: '',
-  middleTh: '',
   lastTh: '',
   prefixEn: '',
   firstEn: '',
-  middleEn: '',
   lastEn: '',
   birthDate: '',
   foodAllergy: '',
@@ -51,6 +70,26 @@ const EMPTY_PERSON = {
 const EMPTY_CONTACT = { email: '', phone: '', line: '' }
 
 /**
+ * ------------------------------------------------------- what the asterisks now mean
+ *
+ * Every label in the person and contact blocks carries a `Required Indicator` on the desktop
+ * frames — `2053:398`, `2053:406`, `2053:412`, `2053:419`, `2053:427`, `2053:433`, `2053:440`,
+ * `2053:446`, `2053:452`, `2053:458`, `2053:474`, `2053:480`, `2053:486` on the advisor step,
+ * and the matching run `2053:586` … `2053:670` on the entrant one. All of them. The code drew
+ * `*` on six of those and nothing anywhere enforced any of them.
+ *
+ * There is no list of required keys in this file any more, and that is the point: `required`
+ * IS the check. Each control in components/form/Field.tsx registers itself with the step gate
+ * when it carries the prop, so the mark and the rule are one declaration and cannot drift into
+ * disagreeing — which is exactly how an asterisk ends up decorative.
+ *
+ * Worth a second opinion from the user: Figma marks ประเภทอาหารพิเศษ, ยาที่แพ้, โรคประจำตัว
+ * and LINE ID required, which reads more like every label being copied from one component
+ * than like a decision that a registrant with no allergies cannot proceed. Relaxing any of
+ * them is now deleting one `required` prop.
+ */
+
+/**
  * The person block shared by the advisor and entrant steps. The entrant version adds a
  * date of birth; otherwise the field set is identical. Figma gives the advisor block a
  * 20 gap under its heading and the entrant block 24, hence `headingGap`.
@@ -59,15 +98,36 @@ const EMPTY_CONTACT = { email: '', phone: '', line: '' }
  * entrant step renders a documents section, a person block and a contact block, and the
  * three clear buttons must not reach into each other.
  */
+/**
+ * The two steps DISAGREE on the four name placeholders, and the block used to render the
+ * advisor's on both. Figma:
+ *
+ *   advisor  `2053:408` นพนภา   `2053:414` ณ บางมด   `2053:429` Nopnapa  `2053:435` Na bangmod
+ *   entrant  `2053:596` มดแฮก   `2053:602` ณ บางมด   `2053:617` Modhack  `2053:623` Na bangmod
+ *
+ * i.e. the surnames match and the given names do not — the entrant is "มดแฮก" / "Modhack" on
+ * both `2053:498` and `2053:694`. Everything else in the block (the prefix "เลือก"/"Choose", the
+ * three health placeholders, the ปฐมพยาบาล textarea) is identical on the two frames and stays
+ * shared, so only the pair that actually differs is passed in.
+ */
+const ADVISOR_NAMES = { firstTh: 'นพนภา', firstEn: 'Nopnapa' }
+const ENTRANT_NAMES = { firstTh: 'มดแฮก', firstEn: 'Modhack' }
+
+export { ADVISOR_NAMES, ENTRANT_NAMES }
+
 export default function PersonFields({
   title,
   withBirthDate = false,
   headingGap = 'gap-6',
+  names = ADVISOR_NAMES,
 }: {
   title: string
   withBirthDate?: boolean
   headingGap?: string
+  names?: { firstTh: string; firstEn: string }
 }) {
+  /* the gate needs no wiring here: an unrendered control registers nothing, so an advisor
+     block — which never mounts the date of birth — is never gated on one */
   const { bind, clear } = useFieldGroup(EMPTY_PERSON)
 
   return (
@@ -75,11 +135,14 @@ export default function PersonFields({
       <SectionTitle title={title} onClear={clear} />
 
       <div className="flex w-full flex-col items-start gap-8">
+        {/* Placeholders are Figma's own, not the repeated "มะลิ" that stood in for them:
+            `2053:400` / `2053:408` / `2053:414` on the advisor step and `2053:588` /
+            `2053:596` / `2053:602` on the entrant one. */}
         <div className={ROW}>
           <SelectField
             label="คำนำหน้า"
             required
-            placeholder="มะลิ"
+            placeholder="เลือก"
             options={PREFIX_OPTIONS}
             className={PREFIX}
             {...bind('prefixTh')}
@@ -87,20 +150,14 @@ export default function PersonFields({
           <TextField
             label="ชื่อจริง (ภาษาไทย)"
             required
-            placeholder="มะลิ"
+            placeholder={names.firstTh}
             className={CELL}
             {...bind('firstTh')}
           />
           <TextField
-            label="ชื่อกลาง (ภาษาไทย)"
-            placeholder="มะลิ"
-            className={CELL}
-            {...bind('middleTh')}
-          />
-          <TextField
             label="นามสกุล (ภาษาไทย)"
             required
-            placeholder="มะลิ"
+            placeholder="ณ บางมด"
             className={CELL}
             {...bind('lastTh')}
           />
@@ -108,9 +165,9 @@ export default function PersonFields({
 
         <div className={ROW}>
           <SelectField
-            label="คำนำหน้า"
+            label="Title"
             required
-            placeholder="มะลิ"
+            placeholder="Choose"
             options={['Mr.', 'Mrs.', 'Miss']}
             className={PREFIX}
             {...bind('prefixEn')}
@@ -118,20 +175,14 @@ export default function PersonFields({
           <TextField
             label="First Name"
             required
-            placeholder="มะลิ"
+            placeholder={names.firstEn}
             className={CELL}
             {...bind('firstEn')}
           />
           <TextField
-            label="Middle Name"
-            placeholder="มะลิ"
-            className={CELL}
-            {...bind('middleEn')}
-          />
-          <TextField
             label="Last Name"
             required
-            placeholder="มะลิ"
+            placeholder="Na bangmod"
             className={CELL}
             {...bind('lastEn')}
           />
@@ -149,19 +200,22 @@ export default function PersonFields({
           )}
           <TextField
             label="อาหารที่แพ้"
-            placeholder="มะลิ"
+            required
+            placeholder="เช่น กุ้ง, ถั่วลิสง"
             className={CELL}
             {...bind('foodAllergy')}
           />
           <TextField
             label="ประเภทอาหารพิเศษ"
-            placeholder="มะลิ"
+            required
+            placeholder="เช่น อาหารมุสลิม, มังสวิรัติ"
             className={CELL}
             {...bind('specialDiet')}
           />
           <TextField
             label="ยาที่แพ้"
-            placeholder="มะลิ"
+            required
+            placeholder="เช่น เพนิซิลลิน"
             className={CELL}
             {...bind('drugAllergy')}
           />
@@ -169,7 +223,8 @@ export default function PersonFields({
 
         <TextArea
           label="โรคประจำตัว และวิธีปฐมพยาบาลเบื้องต้น"
-          placeholder="รายละเอียด"
+          required
+          placeholder="ระบุโรคประจำตัวและวิธีปฐมพยาบาลเบื้องต้น"
           {...bind('conditions')}
         />
       </div>
@@ -183,11 +238,13 @@ export function ContactFields() {
   return (
     <section className="flex w-full flex-col items-center justify-center gap-6">
       <SectionTitle title="ช่องทางติดต่อ" onClear={clear} />
+      {/* `2053:476` / `2053:482` / `2053:488` — the email placeholder is Figma's own address,
+          not "example@email.com", and LINE ID carries a `*` (`2053:486`) the code omitted. */}
       <div className={ROW}>
         <TextField
           label="อีเมล"
           required
-          placeholder="example@email.com"
+          placeholder="modhack@school.ac.th"
           className={CELL}
           {...bind('email')}
         />
@@ -198,7 +255,13 @@ export function ContactFields() {
           className={CELL}
           {...bind('phone')}
         />
-        <TextField label="LINE ID" placeholder="มะลิ" className={CELL} {...bind('line')} />
+        <TextField
+          label="LINE ID"
+          required
+          placeholder="ไอดีไลน์"
+          className={CELL}
+          {...bind('line')}
+        />
       </div>
     </section>
   )

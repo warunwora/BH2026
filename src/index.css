@@ -39,6 +39,32 @@
 }
 
 /* ==========================================================================
+   Monochrome glyphs that take the text's colour
+   ==========================================================================
+
+   An `<img>` paints the colours baked into its file, so a one-colour SVG icon sitting next to a
+   label that changes on hover simply cannot follow it — the footer's Facebook and Instagram
+   marks stayed #282828 while their labels went brand red, which reads as a half-finished hover.
+
+   Painting the icon as a MASK over `currentColor` fixes it at the root: the element is a solid
+   fill of whatever colour it inherits, punched out to the glyph's shape, so it tracks the link's
+   colour in every state — hover, focus, visited, forced-colours — with no second rule to keep in
+   sync, and the colour transition `.mm-link` already declares covers it for free.
+
+   Only for glyphs that are ONE colour. A mask discards the source's own colours entirely, so a
+   multi-colour mark (the Google G, the wordmark) must stay an `<img>`.
+
+   `-webkit-mask` is still required: Safari did not unprefix `mask` until 17.4, and this site's
+   audience is heavily iOS. `center / contain no-repeat` so the glyph fits whatever box the size
+   utility gives it, exactly as `object-fit: contain` did for the image it replaces.
+   ========================================================================== */
+.mask-icon {
+  background-color: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+/* ==========================================================================
    Keyboard focus
    ==========================================================================
 

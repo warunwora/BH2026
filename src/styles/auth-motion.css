@@ -280,6 +280,50 @@
   }
 
   /*
+   * THE PROGRESSIVE-BLUR "FLICKER", and it was never the blur.
+   *
+   * The same paint-order rule as the blocks above, one element further along, and it is the
+   * bug the user reported repeatedly as "the blur flickers when I scroll or change page".
+   *
+   * `.wizard-pasta` is a named element, so the UA lifts it out of `::view-transition-group(root)`
+   * and paints it as its own group — and named groups are ALWAYS above `root`. The nav band's
+   * `ScrollEdgeEffect` is unnamed, so it stays inside `root`, at the bottom. For the whole length
+   * of every step hop the pasta artwork is therefore drawn OVER the band that is supposed to be
+   * softening it, and both the blur and the 0.9 white plate appear to switch off together and
+   * then snap back.
+   *
+   * Reproduced with a NO-OP `document.startViewTransition(() => {})` — zero DOM change — so no
+   * step content is involved. Measured over the flowers under the band, mean RGB / luma sd:
+   *
+   *     band painting            [248.9, 240.2, 221.6]   25.88
+   *     mid-transition           [234.2, 201.6, 129.0]   49.17
+   *     band `display: none`     [234.2, 201.4, 128.7]   49.17
+   *
+   * Mid-transition is byte-identical to the band having been deleted.
+   *
+   * Two things kept this alive through three rounds of "verified fixed". `Page.captureScreenshot`
+   * forces a fresh paint and hides it completely — only `Page.startScreencast`, which reads real
+   * compositor output, shows it. And the eclipse PERSISTS after the transition ends until the
+   * next repaint, which is why it reads as "flickers while scrolling": scrolling is the repaint
+   * that brings the band back, not the thing that breaks it.
+   *
+   * Dropping the name between steps costs nothing — the pasta is required not to move at all on
+   * `forward`/`back`, so it has no counterpart to travel to and no exit of its own. It KEEPS its
+   * name on `enter`/`submit`, where `wizard-pasta-arrive` / `-leave` genuinely need it.
+   *
+   * Do NOT "fix" this by naming the band instead: `view-transition-name` makes an element a
+   * backdrop root, so the band's `backdrop-filter` stack is destroyed outright — measured
+   * byte-identical to `backdrop-filter: none` at every depth. `z-index` on the element or on
+   * `::view-transition-group()`, re-parenting the band to `<body>`, and removing
+   * `container-type` / `overflow-clip` / `will-change` / `position: fixed` were all measured and
+   * all do nothing, because none of them can reorder view-transition groups.
+   */
+  :root[data-auth-nav='forward'] .wizard-pasta,
+  :root[data-auth-nav='back'] .wizard-pasta {
+    view-transition-name: none;
+  }
+
+  /*
    * The group carries the travel. It is the one animation here that touches geometry
    * rather than transform alone, and unavoidably so: the group animation IS the
    * browser's morph. It runs on the compositor over a snapshot, never over live

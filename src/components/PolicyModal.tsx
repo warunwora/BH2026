@@ -53,21 +53,9 @@ function Block({ block }: { block: PolicyBlock }) {
   )
 }
 
-/**
- * The two footer answers. Every length is a two-anchor ramp off `1297:1629` / `1297:1631`
- * (the 402 sheet: 10 radius, 20 of side pad, 8 of block pad, a 16 label — 38 tall) and
- * `708:2165` / `708:2167` (1440: 12 / 24 / 12 / 20 — 52 tall). All four were the 1440 value
- * held flat, so the phone drew a 52-tall button where Figma draws 38.
- *
- * Weight is Regular (400) on both frames, which is the inherited body weight, so no class.
- */
-const ANSWER =
-  'mm-press rounded-[calc(9.948px_+_2.052*var(--fl))] px-[calc(19.896px_+_4.104*var(--fl))] py-[calc(7.896px_+_4.104*var(--fl))] text-[calc(15.896px_+_4.104*var(--fl))] leading-[1.4]'
-
 export default function PolicyModal({
   document: doc,
   origin,
-  onAccept,
   onDecline,
 }: {
   /** `null` closes the modal. */
@@ -78,7 +66,13 @@ export default function PolicyModal({
    * which is the right default for a dialogue with no trigger to be anchored to.
    */
   origin?: { x: number; y: number } | null
-  onAccept: () => void
+  /**
+   * Accepted and ignored. The reader no longer records a decision — consent lives on the terms
+   * step — but the prop stays in the type so the existing call site keeps compiling while it is
+   * owned by another agent. Remove both together.
+   */
+  onAccept?: () => void
+  /** Dismiss. Called by the close X, the scrim and Escape. */
   onDecline: () => void
 }) {
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -254,6 +248,31 @@ export default function PolicyModal({
                 solve through. Kept rather than hidden: dropping copy is a composition change. */}
             <p className="fl-18 leading-normal text-gray-1">{shown.subtitle}</p>
           </div>
+          {/*
+           * The close X, which is how this sheet is dismissed now that the footer holds only
+           * ดาวน์โหลด. Placed in the header rather than floated over the sheet so it cannot
+           * overlap the body's first line on a narrow phone, and `-me-2` pulls its 44px touch
+           * target back out to the sheet's own padding edge so the visible 24 mark sits where
+           * Figma's does while the tappable box stays a full 44.
+           *
+           * `aria-label` because the control is glyph-only, and the glyph is drawn rather than
+           * shipped as an asset so it takes `currentColor` and can respond to hover at all.
+           */}
+          <button
+            type="button"
+            onClick={onDecline}
+            aria-label="ปิด"
+            className="mm-press-icon -me-2 flex size-11 shrink-0 items-center justify-center rounded-full text-gray-1 hover:text-ink"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden className="size-6" fill="none">
+              <path
+                d="M6 6l12 12M18 6L6 18"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
         </header>
 
         {/* 20 between sections on `1297:1587`, 24 on `708:2124` — was `gap-6`, the 1440 value flat */}
@@ -299,6 +318,22 @@ export default function PolicyModal({
          * its box — the one thing this flow may never do. Wrapped, ดาวน์โหลด keeps the left of
          * its line and the two answers keep the right of theirs. The gap is 16 on both frames.
          */}
+        {/*
+         * ONE button in the footer, and a close X in the top-right corner instead of the pair.
+         *
+         * ยอมรับ / ไม่ยอมรับ are gone by instruction, and the flow is better for it: the actual
+         * consent lives on the terms STEP — the checkbox in `2053:108` and the per-row ยอมรับ /
+         * ไม่ยอมรับ pairs beside it — so a second accept inside the reader was a second place to
+         * record the same decision, and the two could disagree. The modal is now purely a
+         * reader: open it, read it, close it, and decide on the step where the decision is
+         * stored and validated.
+         *
+         * Both handlers already did the identical thing at the only call site (TermsStep passes
+         * `setOpenDoc(null)` to each), so nothing is lost. The props keep their names and stay
+         * optional so the call site — owned by another agent right now — continues to compile
+         * either way; `onDecline` is what the X and the scrim call, being the existing
+         * "dismiss without deciding" handler.
+         */}
         <footer className="auth-modal-part flex w-full shrink-0 flex-wrap items-center justify-end gap-4">
           {shown.downloadable && (
             <button
@@ -334,23 +369,6 @@ export default function PolicyModal({
               ดาวน์โหลด
             </button>
           )}
-
-          <div className="flex shrink-0 items-center gap-4">
-            <button
-              type="button"
-              onClick={onDecline}
-              className={`${ANSWER} bg-[#efefef] transition-colors hover:bg-[#e2e2e2]`}
-            >
-              ไม่ยอมรับ
-            </button>
-            <button
-              type="button"
-              onClick={onAccept}
-              className={`${ANSWER} bg-brand-red text-white transition-opacity hover:opacity-90`}
-            >
-              ยอมรับ
-            </button>
-          </div>
         </footer>
       </div>
     </div>

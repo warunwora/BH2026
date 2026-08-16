@@ -1,5 +1,180 @@
-import { useState, type MouseEvent } from 'react'
+import {
+  createContext,
+  createElement,
+  useContext,
+  useId,
+  useRef,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+} from 'react'
 import { useNavigate, type createBrowserRouter, type Location, type To } from 'react-router-dom'
+
+/**
+ * ------------------------------------------------------------------ the step gate
+ *
+ * Every `*` on `2053:217` / `2053:318` / `2053:498` / `2053:694` and both consent rows on
+ * `2053:108` were decoration: ถัดไป is a `<Link>`, so a user could walk the entire wizard
+ * without accepting the agreement, answering a required consent, or typing a single
+ * character. This is the plumbing that makes those asterisks mean something.
+ *
+ * The pill STAYS PRESSABLE and the press is what runs the check. A disabled control that has
+ * gone grey for reasons the reader has to guess at is the worst of both worlds — it refuses
+ * the task and declines to say why — and a message parked in the action bar is no better,
+ * because it names a problem at the opposite end of a form the user then has to go hunting
+ * through. So: press ถัดไป, and if something is missing the wizard takes you TO it. The field
+ * itself goes red, says what it wants, and takes focus.
+ *
+ * It is a REGISTRY rather than a validation library, because the wizard has no submit and no
+ * schema — each control already owns its own value (`useFieldGroup`, `useFileSlot`, the terms
+ * step's checkbox), and lifting all of that into a form library to gate one button would be a
+ * rewrite. Each control declares, in one line, what it still needs and hands over a way to
+ * find its DOM node.
+ *
+ * The registry lives in a REF, not in state. `set` runs on every keystroke of every field on
+ * the step, and holding that in state would re-render all ~14 controls on each one. The only
+ * piece that has to be reactive is which single field is currently flagged, so that is the
+ * only piece that is state.
+ */
+type GateEntry = { reason: string | null; el: () => HTMLElement | null }
+
+type GateApi = {
+  set: (id: string, entry: GateEntry) => void
+  drop: (id: string) => void
+  /** Runs the pass. Returns true when the step may advance. */
+  validate: () => boolean
+}
+
+const GateApiCtx = createContext<GateApi | null>(null)
+/** the id of the one field currently showing an error, or null */
+const GateFlagCtx = createContext<string | null>(null)
+
+export function GateProvider({ children }: { children: ReactNode }) {
+  const fields = useRef(new Map<string, GateEntry>())
+  const [flagged, setFlagged] = useState<string | null>(null)
+
+  const api = useMemo<GateApi>(
+    () => ({
+      set: (id, entry) => {
+        fields.current.set(id, entry)
+        /* "the error state must clear when the field becomes valid" — cleared centrally as
+           well as at the call site, so a flag can never outlive the problem that raised it */
+        if (entry.reason === null) setFlagged((f) => (f === id ? null : f))
+      },
+      drop: (id) => {
+        fields.current.delete(id)
+        setFlagged((f) => (f === id ? null : f))
+      },
+
+      validate: () => {
+        /*
+         * DOCUMENT ORDER, resolved from the live DOM rather than from registration order.
+         * Effects fire in tree order on the first mount, so the Map usually happens to be in
+         * page order — but a field that re-registers (its reason changed) moves to the end of
+         * a Map, and a conditional control like the entrant's date of birth mounts later than
+         * the fields below it. `compareDocumentPosition` is the only reading of "first" that
+         * survives both, and it is what the brief asks for: the FIRST incomplete field, not
+         * the last and not all of them.
+         */
+        const bad: { id: string; el: HTMLElement }[] = []
+        for (const [id, entry] of fields.current) {
+          const el = entry.el()
+          if (entry.reason !== null && el) bad.push({ id, el })
+        }
+        if (bad.length === 0) {
+          setFlagged(null)
+          return true
+        }
+        bad.sort((a, b) =>
+          a.el.compareDocumentPosition(b.el) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
+        )
+
+        const first = bad[0]
+        setFlagged(first.id)
+
+        /*
+         * Deferred by a task so the jump happens AFTER React has painted the error. The
+         * field's message element does not exist until `flagged` re-renders it, and focusing
+         * before that would point `aria-describedby` at an id that is not in the document yet
+         * — the screen reader would announce the field and none of the reason. By the time a
+         * zero-delay task runs, the state flush from this event handler has committed.
+         */
+        window.setTimeout(() => {
+          const el = fields.current.get(first.id)?.el()
+          if (!el) return
+          const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          /* `block: 'center'` rather than `nearest`: the wizard body is now a scrollport with
+             an opaque action bar pinned over its bottom edge, and `nearest` is happy to park a
+             field underneath that bar. `behavior` respects reduced motion, as asked. */
+          el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' })
+          /* the scroll above is the one that positions it — a focus that scrolls too would
+             fight it, and in Chrome would win, landing on `nearest` */
+          el.focus({ preventScroll: true })
+        }, 0)
+
+        return false
+      },
+    }),
+    [],
+  )
+
+  return createElement(
+    GateApiCtx.Provider,
+    { value: api },
+    createElement(GateFlagCtx.Provider, { value: flagged }, children),
+  )
+}
+
+/**
+ * One control's claim on the step, and everything it needs to render a refusal.
+ *
+ * `reason` is the sentence to show when this control is the one holding the step up, and
+ * `null` once it is satisfied. Spread the returned `ref` onto the focusable element, put
+ * `invalid` into its styling and `aria-invalid`, and render `message` in an element carrying
+ * `messageId` — which the control then names in `aria-describedby`. A red border on its own
+ * is invisible to a screen reader; the pair is what makes the state announceable.
+ *
+ * Outside a `GateProvider` — the same controls are used off the wizard — every field of the
+ * result is inert, so nothing has to know whether it is being gated.
+ */
+export function useGateField<T extends HTMLElement>(reason: string | null) {
+  const id = useId()
+  const ref = useRef<T | null>(null)
+  const api = useContext(GateApiCtx)
+  const flagged = useContext(GateFlagCtx) === id
+
+  /*
+   * `useLayoutEffect`, because `validate()` reads this registry synchronously from a click.
+   * With a passive effect, a field whose value changed in the same tick as the press would
+   * still be advertising its previous reason. There is no SSR here for the usual warning.
+   */
+  useLayoutEffect(() => {
+    api?.set(id, { reason, el: () => ref.current })
+  }, [api, id, reason])
+
+  useLayoutEffect(() => () => api?.drop(id), [api, id])
+
+  /* a flag only survives while the problem does — belt and braces with `set` above, and the
+     half that acts immediately on re-render rather than one state flush later */
+  const invalid = flagged && reason !== null
+
+  return {
+    ref,
+    invalid,
+    messageId: `${id}-gate`,
+    message: invalid ? reason : null,
+  }
+}
+
+/** What the two forward pills call on press. Returns true when the step may advance. */
+export function useGateValidate(): () => boolean {
+  const api = useContext(GateApiCtx)
+  return api ? api.validate : ALWAYS_VALID
+}
+
+const ALWAYS_VALID = () => true
 
 /**
  * Direction and capability plumbing for the auth-flow view transitions.
