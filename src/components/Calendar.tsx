@@ -177,7 +177,44 @@ const HL_LABEL = 'text-[calc(19.922px_+_3.078*var(--fl))]' /* 1190:598 — 20 @4
  * The row's gap is a flat 8 — `2074:3142` sets 8 and the phone's own icon row `1190:600` also
  * sets 8, so the two anchors agree and there is nothing to ramp.
  */
-const HL_NOTE = 'text-[calc(15.7919px_+_8.2081*var(--fl))]'
+/*
+ * ONE LINE, ALWAYS, AND THE SAME SIZE ON BOTH CARDS — asked for on 2026-08-16.
+ *
+ * The ramp alone wraps in one narrow band. Measured: the string needs a constant **15.38x its
+ * own font size** on one line, and the red card's text box is
+ *
+ *     430  box 344, needs 249   fits          834  box 312, needs 297   fits
+ *     640  box 512, needs 274   fits          1024 box 410, needs 320   fits
+ *     768  box 280, needs 290   WRAPS         1440 box 652, needs 369   fits
+ *
+ * so it fails only from `md`, where the row first splits in two, until the columns have grown
+ * back past it around 800.
+ *
+ * The clamp is against the ROW, not the card, and that is the whole reason it is written this
+ * way. Figma's two cards are 700 and 476 at 1440 — DIFFERENT widths — so `cqi` measured against
+ * each card would hand the two eyebrows two different sizes, which is exactly what the user
+ * asked to stop. The row is the one box both cards share, so one basis gives one number.
+ *
+ * TWO coefficients, because the row means two different things either side of `md`.
+ *
+ * Below `md` the cards are STACKED, so the row is one card and the text budget is nearly the
+ * whole of it. From `md` the row holds both cards, so the same `cqi` buys less than half as
+ * much. One coefficient cannot serve both: the split value read 10px on a stacked phone.
+ *
+ * And the budget is NOT the paragraph's width — the line is a flex row of `icon + gap + text`,
+ * so the glyph (18.4 -> 28) and the 8px gap come off first. Sizing against the paragraph is the
+ * mistake this note exists to record: it put the clamp 25px too generous at 768, and because
+ * `whitespace-nowrap` cannot wrap, the text ran out of its own card instead of wrapping.
+ *
+ *     320  card 240, budget 214 -> 13.9 max     768   row 652, budget 250 -> 16.25 max
+ *     402  card 354            -> ramp wins     834   row 706, budget 281 -> 18.27 max
+ *     430  card 377            -> ramp wins     1024+ row 861+           -> ramp wins
+ *
+ * 5.05cqi and 2.45cqi are those bounds with a little held back for the fallback face. The clamp
+ * bites only at 320 and across 768-1000; everywhere else the ramp is already smaller.
+ */
+const HL_NOTE =
+  'whitespace-nowrap text-[min(calc(15.7919px_+_8.2081*var(--fl)),5.05cqi)] md:text-[min(calc(15.7919px_+_8.2081*var(--fl)),2.45cqi)]'
 const HL_NOTE_ICON = 'w-[calc(18.424px_+_9.576*var(--fl))] h-[calc(18.424px_+_9.576*var(--fl))]'
 /** `2074:3143` — `time_light`, exported at its own 28x28 with the vector's inset baked in, so
  *  the box sizes the glyph directly and there is no inset span to get wrong. */

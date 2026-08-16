@@ -75,7 +75,19 @@ const FOOTER_PAD: React.CSSProperties = {
 function BottomRow({ className = '' }: { className?: string }) {
   return (
     <div
-      className={`flex flex-wrap items-baseline gap-x-3 gap-y-1 text-xs leading-[1.5] font-light text-gray-1 min-[1440px]:w-max min-[1440px]:flex-nowrap ${className}`}
+      /*
+       * 12 -> 14, and this is a DELIBERATE +2 at the desktop end over Figma, which sets this
+       * line at 12/300 on both frames (`1297:319` at 1440, `1190:1467` at 402).
+       *
+       * Asked for on 2026-08-16 with the standard "อ่านแล้วไม่ล้นจอ ไม่ทำให้เหนื่อย แต่ก็ไม่ทำให้
+       * ดีไซน์เสีย". A legal line is meant to be the quietest thing on the page and that is worth
+       * keeping — so it stays the smallest type on the site at both ends, and only gains the 2px
+       * that stops 12px reading as unreadably fine on a 1440 display. Anything larger would start
+       * competing with `จัดโดย…` above it, which Figma sets at 16 here.
+       *
+       * 11.948 + 2.052 x 0.02535211 = 12.000 at 402, and 14.000 at `--fl` = 1.
+       */
+      className={`flex flex-wrap items-baseline gap-x-3 gap-y-1 text-[calc(11.948px_+_2.052*var(--fl))] leading-[1.5] font-light text-gray-1 min-[1440px]:w-max min-[1440px]:flex-nowrap ${className}`}
     >
       <span className="tabular-nums whitespace-nowrap">{VERSION_LABEL}</span>
       <p className="min-[1440px]:whitespace-nowrap">{FOOTER_ABOUT.copyright}</p>
