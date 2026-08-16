@@ -15,21 +15,54 @@ export const HERO_LINES = [
  */
 export const HERO_FREE_NOTE = 'สมัครฟรี ไม่มีค่าใช้จ่าย'
 
-/** Gradient highlight cards in the calendar section. */
+/**
+ * Gradient highlight cards in the calendar section.
+ *
+ * DATES FOLLOW FIGMA (user's decision, 2026-08-16 — "ให้ยึดตาม Figma"). The desktop frame
+ * `708:39` is authoritative and it has been re-typed since these strings were written: the
+ * `2074:*` batch renamed nothing, so every layer here is still NAMED for the old date while
+ * its text carries the new one. That is what hid the drift — `708:163` is called
+ * "17 ส.ค.  - 20 ก.ย. Container" and its `708:164` reads "19 ส.ค. - 20 ก.ย.".
+ *
+ *   19 ส.ค. - 20 ก.ย.  `708:164`    (was 17 ส.ค. - 20 ก.ย.)
+ *   22 ก.ย.            `2074:3151`  (was 23 ก.ย.)
+ *
+ * The phone frame `1190:558` still shows 17 and 23 (`1190:597` / `1190:607`) — it is the older
+ * revision, the one that also still draws the removed "เพิ่มไปยังปฏิทิน" row and has no
+ * eyebrow. Desktop wins on conflict, which is this repo's standing rule.
+ *
+ * `note` is the eyebrow line above the big date, `2074:3145` and `2074:3150`, both 24/300 white
+ * beside a 28x28 clock. It is new in that same batch and had never been rendered.
+ */
 export const TIMELINE_HIGHLIGHTS = [
-  { date: '17 ส.ค. - 20 ก.ย.', label: 'เปิดรับสมัคร', tone: 'red' as const },
-  { date: '23 ก.ย.', label: 'ประกาศรายชื่อทีมที่มีสิทธิ์เข้าแข่งขัน', tone: 'yellow' as const },
+  {
+    date: '19 ส.ค. - 20 ก.ย.',
+    note: 'ปิดรับสมัคร 23:59 น. ของวันที่ 20 ก.ย.',
+    label: 'เปิดรับสมัคร',
+    tone: 'red' as const,
+  },
+  {
+    date: '22 ก.ย.',
+    note: '14:00 น.',
+    label: 'ประกาศรายชื่อทีมที่มีสิทธิ์เข้าแข่งขัน',
+    tone: 'yellow' as const,
+  },
 ]
 
 /** `1235:79` — footnote under the timeline grid, 970 wide in the 1200 column. */
 export const CALENDAR_NOTE =
   'หมายเหตุ: กำหนดการอาจมีการเปลี่ยนแปลงตามความเหมาะสม โปรดติดตามประกาศอย่างเป็นทางการจากช่องทางของโครงการ'
 
-/** White follow-up cards in the calendar section. */
+/**
+ * White follow-up cards in the calendar section. Dates from the desktop frame, same rule as
+ * TIMELINE_HIGHLIGHTS above: `708:183` 26 ก.ย. and `708:187` 28 ก.ย. were already right;
+ * `708:191` is **9 พ.ย.** and this list carried 7, again behind a layer still named
+ * "7 พ.ย. Container".
+ */
 export const TIMELINE_STEPS = [
   { date: '26 ก.ย.', lines: ['การแข่งขันรอบคัดเลือก', 'รูปแบบ Online'] },
   { date: '28 ก.ย.', lines: ['ประกาศรายชื่อทีมที่ผ่านการแข่งขัน รอบคัดเลือก'] },
-  { date: '7 พ.ย.', lines: ['การแข่งขันรองชนะเลิศและรอบชิงชนะเลิศ', 'รูปแบบ Onsite ณ มจธ.'] },
+  { date: '9 พ.ย.', lines: ['การแข่งขันรองชนะเลิศและรอบชิงชนะเลิศ', 'รูปแบบ Onsite ณ มจธ.'] },
 ]
 
 /** Copy only — each card's photo arrangement is pinned in `Steps`, not picked here. */

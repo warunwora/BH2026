@@ -145,6 +145,43 @@ const BOWL_BOX =
    lands on the verified 1440 value, so the desktop design is untouched. */
 const HL_DATE = 'text-[calc(27.532px_+_18.468*var(--fl))]' /* 1190:597 — 28 @402, 46 @1440 */
 const HL_LABEL = 'text-[calc(19.922px_+_3.078*var(--fl))]' /* 1190:598 — 20 @402, 23 @1440 */
+/*
+ * ------------------------------------------------- the eyebrow, and its narrow anchor
+ *
+ * `2074:3145` / `2074:3150`: a clock glyph and a line of 24/300 white, 8 apart, sitting as the
+ * FIRST row of the card's content column, 8 above the big date. New in the `2074:*` batch and
+ * never rendered until now.
+ *
+ * THE PHONE FRAME DOES NOT DRAW IT. `1190:596` / `1190:606` open straight onto the big date —
+ * that frame is the older revision (it still carries the removed "เพิ่มไปยังปฏิทิน" row and the
+ * pre-retype dates), so there is no 402 value to solve MIN from and the usual two-anchor recipe
+ * has one anchor. Rather than invent a second design, the narrow end is taken from the phone
+ * frame's OWN small weight-300 line in this same section: `1190:617` / `1190:621` / `1190:625`
+ * set the divider cards' sub-labels at 16/300, lh 22.4 — the same role, the same weight, one
+ * rank under the 20/400 card label beside it. So the eyebrow is 16 @402 and Figma's 24 @1440,
+ * which is also exactly `BODY` below (`1190:617`, 16 → 19)… except at the top end, where this
+ * one has to reach 24 rather than 19. Hence its own ramp rather than reusing the token.
+ *
+ *   DELTA = (24 - 16) / 0.97464789 = 8.2081,  MIN = 24 - 8.2081 = 15.7919
+ *   at --fl = 0.02535211 (402): 16.000     at --fl = 1: 24.000
+ *
+ * Weight is 300 at both ends and never ramps, per the house rule.
+ *
+ * The GLYPH scales with its own text rather than with the card: Figma boxes it 28 beside 24px
+ * type, i.e. 7/6 of the type size, and the phone frame's own icon in this section (`1190:601`,
+ * 24) is 2/3 of the desktop's (`1235:81`, 36) — the same 0.667 the type takes from 24 to 16. So
+ * both readings land on 28 * 16/24 = 18.667 at 402 and 28 at 1440.
+ *
+ *   DELTA = (28 - 18.667) / 0.97464789 = 9.5760,  MIN = 28 - 9.5760 = 18.4240
+ *
+ * The row's gap is a flat 8 — `2074:3142` sets 8 and the phone's own icon row `1190:600` also
+ * sets 8, so the two anchors agree and there is nothing to ramp.
+ */
+const HL_NOTE = 'text-[calc(15.7919px_+_8.2081*var(--fl))]'
+const HL_NOTE_ICON = 'w-[calc(18.424px_+_9.576*var(--fl))] h-[calc(18.424px_+_9.576*var(--fl))]'
+/** `2074:3143` — `time_light`, exported at its own 28x28 with the vector's inset baked in, so
+ *  the box sizes the glyph directly and there is no inset span to get wrong. */
+const clockIcon = '/assets/figma/b915e9888d74fc9ee8e56316eeb9eab58efe73aa.svg'
 const STEP_DATE = 'text-[calc(23.792px_+_8.208*var(--fl))]' /* 1190:616 — 24 @402, 32 @1440 */
 const BODY = 'text-[calc(15.922px_+_3.078*var(--fl))]' /* 1190:617 — 16 @402, 19 @1440 */
 /**
@@ -273,12 +310,31 @@ function HighlightCard({ item, i }: { item: (typeof TIMELINE_HIGHLIGHTS)[number]
           className="absolute top-[-34.47%] left-[-0.01%] h-[134.47%] w-[100.01%] max-w-none"
         />
       </div>
-      {/* 1190:596 sets the date and label 4 apart; at 1440 they still butt on their leading,
-          so the pair is a ramp (4 @402 → 0 @1440) rather than a `lg:` step that dropped the
-          whole 4 at one breakpoint. */}
-      <div className="relative flex flex-col gap-[calc(4.104px_-_4.104*var(--fl))]">
-        <p className={`${HL_DATE} leading-[1.4] font-medium`}>{item.date}</p>
-        <p className={`${HL_LABEL} leading-[1.4] font-normal`}>{item.label}</p>
+      {/*
+       * `708:163` is a three-row column: eyebrow, date, label, 8 between each. The eyebrow is
+       * kept in an OUTER column with its own gap so that adding it does not disturb the
+       * date/label pair below, whose 4 → 0 ramp was solved separately and holds 1440 still.
+       *
+       * The eyebrow's own gap to the date is 8 at 1440 (`708:163`) and 4 at 402 — the phone
+       * frame has no eyebrow to measure, so it borrows the gap that frame does set inside this
+       * same column (`1190:596`, gap 4), which is the value the pair below already uses at that
+       * anchor. DELTA = (8 − 4)/0.97464789 = 4.1041, MIN = 8 − 4.1041 = 3.8959; that is 4.000
+       * at 402 and 8.000 at `--fl` = 1.
+       */}
+      <div className="relative flex flex-col gap-[calc(3.8959px_+_4.1041*var(--fl))]">
+        {/* `2074:3142` / `2074:3147` — HORIZONTAL, gap 8, cross-axis CENTER. The gap is flat:
+            both the desktop row and the phone frame's own icon row (`1190:600`) set 8. */}
+        <p className={`flex items-center gap-2 ${HL_NOTE} leading-[1.4] font-light`}>
+          <img src={clockIcon} alt="" aria-hidden className={`block shrink-0 ${HL_NOTE_ICON}`} />
+          {item.note}
+        </p>
+        {/* 1190:596 sets the date and label 4 apart; at 1440 they still butt on their leading,
+            so the pair is a ramp (4 @402 → 0 @1440) rather than a `lg:` step that dropped the
+            whole 4 at one breakpoint. */}
+        <div className="flex flex-col gap-[calc(4.104px_-_4.104*var(--fl))]">
+          <p className={`${HL_DATE} leading-[1.4] font-medium`}>{item.date}</p>
+          <p className={`${HL_LABEL} leading-[1.4] font-normal`}>{item.label}</p>
+        </div>
       </div>
       {/*
        * The "บันทึกลงปฏิทิน" row is REMOVED, on the user's instruction (2026-08-16), even though

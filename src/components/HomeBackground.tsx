@@ -209,15 +209,51 @@ const FORK_RIGHT: DecorNode = { x: 968.299, y: 2034.703, w: 888.51, h: 875.25, k
 ] }
 
 /**
- * The food props above the washes, in the frame's paint order: the masthead crowd, the
- * rigatoni scatter, then the garlic and the cutlery riding over the calendar's tail.
+ * The food props above the washes, in the frame's paint order: the masthead crowd and the
+ * rigatoni scatter. Both belong to the TOP of the page, where a Figma page y is still a true
+ * statement at any width — nothing above them reflows — so they are pinned from `lg` up.
  */
-const PROPS: DecorNode[] = [
-  { x: 0, y: 0, w: CANVAS, h: 335, kids: TOP_PASTA },
-  ...RIGATONI_SCATTER,
-  GARLIC_LEFT,
-  FORK_RIGHT,
-]
+const PROPS: DecorNode[] = [{ x: 0, y: 0, w: CANVAS, h: 335, kids: TOP_PASTA }, ...RIGATONI_SCATTER]
+
+/*
+ * The garlic and the cutlery, which ride the calendar's TAIL and so cannot be pinned to a page
+ * y until the page is actually Figma's height.
+ *
+ * ---------------------------------------------------------- the 1024-1359 collision
+ *
+ * These two used to sit in `PROPS` and were therefore drawn at their Figma page y from `lg`
+ * (1024) up, while the section-anchored band below only ran to 1023. That handover was ~340px
+ * too early. Figma's own relationship is
+ *
+ *   Garlic Left `909:41`  y 2184.07 h 363.93 -> bottom 2548
+ *   Steps       `708:193` y 2588                        so the garlic clears the steps by 40
+ *
+ * but the live page only grows tall enough for y 2548 to still be above the steps heading at
+ * about 1360. Measured, garlic bottom against the live `#steps` top (which is also the "02"
+ * eyebrow's own top — the section has no padding above its header):
+ *
+ *     vw     1024    1180    1280    1360    1440
+ *     clear  -203    -117     -22     +43    +108
+ *
+ * So from 1024 to ~1345 the amber wave was painted straight over the "02" eyebrow and the top
+ * of "ขั้นตอนการสมัคร". Sampled at the eyebrow's OWN column rather than at its bbox corner, the
+ * painted background there was #e2973c at 1280 against the eyebrow's own #d79a4e — a contrast
+ * ratio of 1.01, i.e. the number was invisible. Figma paints that same spot #fffefc.
+ *
+ * The fix is to let the SECTION-anchored reading own everything below 1440 and leave the px
+ * canvas to 1440 alone, where it is exact and verified. Measured clearances under the section
+ * band are positive at every width from 431 to 1439 (203 / 66 / 76 / 31 / 6 at
+ * 431 / 768 / 1024 / 1280 / 1439), so the collision is gone across the whole range.
+ *
+ * The 1439 -> 1440 handover still steps the group ~100px, because at 1440 the live page is 68
+ * taller than Figma's frame by the time it reaches the steps section and the px canvas honours
+ * Figma's absolute y regardless. That step is not new and it is now much smaller than the one
+ * this change removes: the old 1023 -> 1024 handover moved the same group 280px AND landed it
+ * on the heading. 1440 itself is byte-for-byte unchanged, which is the constraint that decides
+ * this — anchoring the group off the live steps top instead would reproduce Figma's 40px
+ * clearance everywhere but would move the verified desktop render by 68px.
+ */
+const SECTION_PROPS: DecorNode[] = [GARLIC_LEFT, FORK_RIGHT]
 
 /**
  * "Home Buttom" (935:452) — the frame's bottom-most layers, in its own 1440x1414 space: the
@@ -443,15 +479,26 @@ export default function HomeBackground() {
             )
           })}
         </div>
+        {/* The two tail-riding groups, at their Figma page y — from 1440 ONLY, where that y is
+            a true statement about this page. Below it they are drawn as section-anchored bands
+            instead; see the note on SECTION_PROPS. */}
+        <div className="hidden min-[1440px]:block">
+          {SECTION_PROPS.map((n, i) => (
+            <Node key={i} n={n} />
+          ))}
+        </div>
       </div>
 
       {/*
-       * Below `lg`: the same two groups, as bands hung off the calendar section at the
+       * Below 1440: the same two groups, as bands hung off the calendar section at the
        * fraction of it Figma puts them at. The garlic keeps its left-edge bleed and the
        * cutlery its right-edge bleed, both cropped by this canvas rather than by a page-wide
        * scroll area.
+       *
+       * The ceiling was `lg` and is now 1440 — see the note on SECTION_PROPS for why the old
+       * one painted the amber wave over the "02" eyebrow from 1024 to about 1345.
        */}
-      <div className="hidden min-[431px]:block lg:hidden">
+      <div className="hidden min-[431px]:block min-[1440px]:hidden">
         <SectionBand anchor={calendar} figma={{ y: GARLIC_LEFT.y, ...FIGMA_CALENDAR }}>
           {(top) => (
             <FluidGroup

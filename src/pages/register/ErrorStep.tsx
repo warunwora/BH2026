@@ -28,10 +28,21 @@ export default function ErrorStep() {
         action={
           /* `submit-back`, not `back`: this undoes the submit, so it is the whole result
              screen coming apart — the colour blocks sink away and the wizard's pasta spills
-             back in — not a step sliding sideways. And when the terms step is genuinely the
-             entry behind this one, it is reached by popping it, so the user's answers and
-             their scroll position come back with it. */
-          <Link {...authBack('/register/terms', 'submit-back')} className={RESULT_ACTION}>
+             back in — not a step sliding sideways. When the step behind this one really is the
+             destination, `useAuthBackLink` reaches it by POPPING, so the user's answers and
+             their scroll position come back with them.
+
+             THE DESTINATION IS THE LAST STEP, and it used to be `/register/terms` — correct
+             before the reorder and stale after it. เงื่อนไข was step 5 and carried the submit,
+             so popping back to it was popping back to the button that had just been pressed;
+             Figma `2053:108` moved เงื่อนไข to step 1 and the submit now lives on entrant 2
+             (`SubmitButton` in EntrantStep). Pointing "ลองอีกครั้ง" at terms therefore sent a
+             registrant whose submit had failed back to the FIRST step of five — past every
+             answer they had given — and, because the entry behind this screen is entrant 2 and
+             not terms, `previousEntryIs` failed too, so it PUSHED a fresh terms step rather
+             than popping: a longer history stack and a blank form. Both halves are the same
+             one-line fix. */
+          <Link {...authBack('/register/entrant/2', 'submit-back')} className={RESULT_ACTION}>
             ลองอีกครั้ง
           </Link>
         }

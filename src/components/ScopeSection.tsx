@@ -309,6 +309,13 @@ export default function ScopeSection() {
               <h2 className="fl-section leading-[1.4] font-semibold">ขอบเขตเนื้อหา</h2>
               <p className="fl-lead leading-[1.5] font-light">{SCOPE_INTRO}</p>
             </div>
+            {/*
+             * LABEL IS `ดาวน์โหลด`, NOT Figma's `ดาวน์โหลดฉบับเต็ม (PDF)` (`708:489` / `1190:972`).
+             * A deliberate departure, asked for on 2026-08-16 — and it has now been reverted once
+             * by a Figma sweep that read the difference as a defect, so this note exists to stop
+             * that happening a third time. If the shorter label is ever reconsidered, it is the
+             * user's call, not a parity fix.
+             */}
             <a
               href="#"
               /* `rounded-[100px]` is Figma's on both frames (`1190:969`, and `708:486` is a
@@ -385,6 +392,14 @@ export default function ScopeSection() {
                   against Figma's 246. Desktop's own 20px (`708:489`) is deliberately NOT the
                   ceiling — the type ladder in index.css is calibrated against /register at
                   1440 and owns that end. */}
+              {/* Restored 2026-08-16. `93ef2b2` (the six-category rewrite) truncated this to
+                  "ดาวน์โหลด" as collateral — the comment above it, which that commit did not
+                  touch, still sizes the pill for the full string, and both Figma anchors carry
+                  it: `708:489` is a 217x28 label at 20/700 and `1190:972` a 174x22 one at
+                  16/700. 217 x 16/20 = 173.6 against that 174, so the two agree and the 173.12
+                  the note measures is this string, not the short one. The short label belongs
+                  to the MODAL's header row (`708:2250`, ScopeModal.tsx) and only there.
+                  `whitespace-nowrap` keeps it on the one line the pill is built for. */}
               <span className="leading-[1.4] font-bold whitespace-nowrap text-[calc(15.922px_+_3.078*var(--fl))]">
                 ดาวน์โหลด
               </span>
