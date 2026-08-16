@@ -423,7 +423,21 @@ export function AuthTopBar({
 }: { className?: string } & HTMLAttributes<HTMLElement>) {
   return (
     <header
-      className={`flex items-center justify-between gap-4 ${PLATE_RADIUS} bg-white p-5 shadow-soft ${className}`}
+      /*
+       * `relative z-30` — the plate has to be a POSITIONED box above the card, not a static one.
+       *
+       * The open panel hangs out of the plate's bottom edge, and at some widths it reaches the
+       * card below: measured at 1364, the panel runs to y=191 while `.auth-sheet` starts at 187,
+       * so the panel's last 4px — its bottom border and both bottom corners — were being painted
+       * over. At 1280 the two numbers are 186 and 187, which is why this looked fine at the width
+       * it was first checked at and wrong at the user's.
+       *
+       * The chip's own wrapper already carries `z-20`, and in theory a positioned descendant of a
+       * static box still paints above a static sibling. In practice it did not, so the fix is to
+       * stop relying on that and lift the whole plate: with the plate positioned and above the
+       * card, everything it contains — including a panel that overhangs — is above the card too.
+       */
+      className={`relative z-30 flex items-center justify-between gap-4 ${PLATE_RADIUS} bg-white p-5 shadow-soft ${className}`}
       {...rest}
     >
       <Link to="/" className="mm-press shrink-0" viewTransition>
