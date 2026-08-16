@@ -8,20 +8,22 @@ import {
   type ReactNode,
 } from 'react'
 import { useToast } from '../toast/store'
+import { useGateField } from './wizardNav'
 
 /**
  * Figma's field primitives (708:1311 and its siblings). Every control is a rounded-12
  * box with a 0.8px #dcdcdc hairline and 12 of padding around an 18px line, and every
  * label pairs a 20px medium name with an 18px red asterisk on a 6 gap.
  *
- * The type in this file is written as explicit two-anchor ramps, NOT as the flat-px ranks it
- * used to use. The ranks have floors (`fl-18` bottoms out at 16, `fl-20` at 17) and Figma's
- * phone frame goes under them nearly everywhere here — labels are 14 (`1214:221`), upload
- * captions 12 (`1239:1312`), document rows 14 (`1239:1303`) — so the floors were rendering the
- * phone form 2–5px over frame on ~40 nodes per step, which is most of why /register read as
- * oversized on a phone. Every ramp below still resolves to its exact 1440 value at `--fl` = 1.
+ * The type in this file comes from the flow's own scale in `registerType.tsx` (`--t-14-20` and
+ * friends), NOT from index.css's flat-px ranks. Those ranks have floors (`fl-18` bottoms out at
+ * 16, `fl-20` at 17) and Figma's phone frame goes under them nearly everywhere here — labels are
+ * 14 (`1214:221`), upload captions 12 (`1239:1312`), document rows 14 (`1239:1303`) — so the
+ * floors were rendering the phone form 2–5px over frame on ~40 nodes per step.
  *
- * The one place the floor STAYS is `BOX`, the control's own text — see its note.
+ * Every desktop end is Figma's value times `--rt`, a DELIBERATE 10% trim the user asked for; see
+ * the header of registerType.tsx before "fixing" any of these back to the frames. The one place
+ * a floor STAYS is `BOX`, the control's own text — see its note.
  *
  * Focus used to snap: the border went red in one frame, on around twenty fields per entrant
  * step, and `focus:outline-none` had removed the platform's own ring without putting anything
@@ -37,8 +39,9 @@ import { useToast } from '../toast/store'
  * is most of why /register/entrant/1 reads as too big on a phone. Both land on 12.000 at
  * `--fl` = 1, so no 1440 control moves.
  *
- * The TYPE stays `fl-18` — the one deliberate size departure in this file. Figma's phone value
- * is 12 (`1214:224`) against 18 at 1440 (`708:1316`), and the rank holds 16 at the phone end.
+ * The TYPE is `max(16px, var(--t-16-18))` — the one place in the flow with a hard floor under
+ * it. Figma's phone value is 12 (`1214:224`) against 18 at 1440 (`708:1316`), and the rank runs
+ * 16 → 18 x `--rt` instead.
  *
  * Not a judgement call about legibility: iOS Safari ZOOMS THE PAGE when a focused input's
  * font-size is under 16px, and it does not zoom back out. Every field on /register would punch
@@ -48,9 +51,28 @@ import { useToast } from '../toast/store'
  * the frame's 34-tall control, so the field's geometry is Figma's; only the glyphs inside it
  * are 4px larger than drawn.
  */
-const FIELD_SHAPE = 'rounded-[calc(7.896px_+_4.104*var(--fl))] p-[calc(7.896px_+_4.104*var(--fl))]'
+/*
+ * PADDING is 7.2 → 11.2 and not 8 → 12, and the 0.8 it is short by is the border.
+ *
+ * Figma's control is 51 tall at 1440 (`2053:283`, `2053:407`, `2053:475` and every other
+ * `calendar_time_add_fill` on the five step frames: `padding: 12`, an 18/1.511 line, and a
+ * 0.8 stroke). 12 + 27.2 + 12 = 51.2 — the stroke contributes NOTHING, because a Figma stroke
+ * is painted inside the frame rather than added to it. CSS does add it: `box-sizing:
+ * border-box` only matters when a size is stated, and these controls are auto-height, so the
+ * live box measured 12 + 27.2 + 12 + 2x0.8 = 52.8 → **53px against Figma's 51, on every field
+ * of every step**. Taking the border's 0.8 out of the padding puts the outer box back on
+ * 51.2 AND leaves the text where Figma draws it: 11.2 of padding plus 0.8 of border is
+ * exactly the 12 inset `2053:284` sits on from the control's outer edge.
+ *
+ * Both ends move by the same 0.8 so the ramp is otherwise untouched, and the arithmetic still
+ * lands on the anchors: 7.096 + 4.104 x 0.02535211 = 7.200 @402, and 11.200 @1440.
+ *
+ * The RADIUS does not move — `2053:283` is `cornerRadius: 12` and a radius is not inset by a
+ * stroke — so the two expressions are deliberately no longer the same number.
+ */
+const FIELD_SHAPE = 'rounded-[calc(7.896px_+_4.104*var(--fl))] p-[calc(7.096px_+_4.104*var(--fl))]'
 
-const BOX = `w-full ${FIELD_SHAPE} border-[0.8px] border-[#dcdcdc] fl-18 leading-[normal] text-ink placeholder:text-gray-1 focus:border-brand-red focus:outline-none transition-[border-color,box-shadow] duration-[160ms] ease-[cubic-bezier(0.4,0,0.2,1)] focus:shadow-[0_0_0_3px_rgb(192_86_62_/_0.12)]`
+const BOX = `w-full ${FIELD_SHAPE} border-[0.8px] border-[#dcdcdc] text-[max(16px,var(--t-16-18))] leading-[normal] text-ink placeholder:text-gray-1 focus:border-brand-red focus:outline-none transition-[border-color,box-shadow] duration-[160ms] ease-[cubic-bezier(0.4,0,0.2,1)] focus:shadow-[0_0_0_3px_rgb(192_86_62_/_0.12)]`
 
 /**
  * Every 24px glyph in this file, as one ramp. Figma draws each of them at 16 on the 402 frames
@@ -175,6 +197,18 @@ const FILE_KINDS = {
     accept: 'application/pdf',
     ok: (f: File) => f.type === 'application/pdf',
     refuse: 'รองรับเฉพาะไฟล์ PDF',
+  },
+  /**
+   * The entrant's photo row, and the one slot in the flow whose caption promises more than PDF:
+   * `2053:572` reads "จำกัดขนาดเอกสารไม่เกิน 10 MB (JPG, PNG, PDF)" where `2053:556` / `2053:564`
+   * beside it say "(PDF เท่านั้น)". The box used to take `pdf` like its neighbours and refuse the
+   * JPG its own caption invited — a control that rejects what it advertises. JPG and PNG are
+   * named rather than a blanket `image/*`, because the caption names them.
+   */
+  photo: {
+    accept: 'image/jpeg,image/png,application/pdf',
+    ok: (f: File) => ['image/jpeg', 'image/png', 'application/pdf'].includes(f.type),
+    refuse: 'รองรับเฉพาะไฟล์ JPG, PNG หรือ PDF',
   },
 }
 
@@ -488,6 +522,8 @@ export function useFieldGroup<T extends Record<string, string>>(empty: T) {
   const [values, setValues] = useState(empty)
 
   return {
+    /** the whole record, so the section can tell the step gate what is still blank */
+    values,
     /** spread onto a field: `<TextField label="ชื่อทีม" {...bind('name')} />` */
     bind: (key: keyof T) => ({
       value: values[key],
@@ -502,13 +538,9 @@ const ICON = '/assets/figma/'
 export function Label({ children, required }: { children: ReactNode; required?: boolean }) {
   return (
     <span className="flex items-center gap-1.5 leading-[normal]">
-      <span className="text-[calc(13.844px_+_6.156*var(--fl))] leading-[normal] font-medium">
-        {children}
-      </span>
+      <span className="text-[length:var(--t-14-20)] leading-[normal] font-medium">{children}</span>
       {required && (
-        <span className="text-[calc(13.896px_+_4.104*var(--fl))] leading-[normal] text-[#ea4335]">
-          *
-        </span>
+        <span className="text-[length:var(--t-14-18)] leading-[normal] text-[#ea4335]">*</span>
       )}
     </span>
   )
@@ -529,28 +561,80 @@ type BaseProps = {
   onChange: (value: string) => void
 }
 
+/**
+ * ------------------------------------------------------------- the refusal, per field
+ *
+ * A control that is holding the step up says so in three places at once, because any one of
+ * them alone leaves somebody out: the border goes red (seen), the reason is written under it
+ * (read), and `aria-invalid` + `aria-describedby` tie the two together (announced). The
+ * message element exists ONLY while the field is flagged, so `aria-describedby` is never a
+ * dangling id.
+ *
+ * Red is `#ea4335`, which is already this file's error colour — `Label`'s asterisk and
+ * `UploadBox`'s refusal caption are both drawn in it, and Figma has no error state of its own
+ * to copy (no 2053 frame draws one).
+ */
+const BOX_INVALID =
+  'border-[#ea4335] focus:border-[#ea4335] focus:shadow-[0_0_0_3px_rgb(234_67_53_/_0.14)]'
+
+function FieldError({ id, message }: { id: string; message: string | null }) {
+  if (!message) return null
+  return (
+    /* 12 → 16, the ramp `UploadBox`'s caption already uses — a note under a control, not body
+       copy. It is inside the `<label>`, so it lands under the input rather than beside it. */
+    <p id={id} className="text-[length:var(--t-12-16)] leading-[normal] text-[#ea4335]">
+      {message}
+    </p>
+  )
+}
+
+/**
+ * What a required control owes the gate: the sentence it shows while empty, and nothing at all
+ * when it is filled or was never required. Trimmed, so a field holding only spaces is empty.
+ */
+const blankReason = (required: boolean | undefined, label: string, value: string) =>
+  required && !value.trim() ? `กรอก${label}` : null
+
 /** Figma's field group: label over control on an 8 gap. */
 function FieldShell({
   label,
   required,
   className,
+  errorId,
+  error,
   children,
-}: Omit<BaseProps, 'value' | 'onChange'> & { children: ReactNode }) {
+}: Omit<BaseProps, 'value' | 'onChange'> & {
+  children: ReactNode
+  errorId: string
+  error: string | null
+}) {
   return (
     <label className={`flex flex-col items-start gap-2 ${className ?? ''}`}>
       <Label required={required}>{label}</Label>
       {children}
+      <FieldError id={errorId} message={error} />
     </label>
   )
 }
 
 export function TextField({ label, required, placeholder, className, value, onChange }: BaseProps) {
+  const gate = useGateField<HTMLInputElement>(blankReason(required, label, value))
+
   return (
-    <FieldShell label={label} required={required} className={className}>
+    <FieldShell
+      label={label}
+      required={required}
+      className={className}
+      errorId={gate.messageId}
+      error={gate.message}
+    >
       <input
+        ref={gate.ref}
         type="text"
         placeholder={placeholder}
-        className={BOX}
+        aria-invalid={gate.invalid || undefined}
+        aria-describedby={gate.message ? gate.messageId : undefined}
+        className={`${BOX} ${gate.invalid ? BOX_INVALID : ''}`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -597,13 +681,24 @@ const NATIVE_PICKER = [
 ].join(' ')
 
 export function DateField({ label, required, placeholder, className, value, onChange }: BaseProps) {
+  const gate = useGateField<HTMLInputElement>(blankReason(required, label, value))
+
   return (
-    <FieldShell label={label} required={required} className={className}>
+    <FieldShell
+      label={label}
+      required={required}
+      className={className}
+      errorId={gate.messageId}
+      error={gate.message}
+    >
       <span className="relative w-full">
         <input
+          ref={gate.ref}
           type="date"
           placeholder={placeholder}
-          className={`${BOX} ${TRAIL} ${NATIVE_PICKER}`}
+          aria-invalid={gate.invalid || undefined}
+          aria-describedby={gate.message ? gate.messageId : undefined}
+          className={`${BOX} ${TRAIL} ${NATIVE_PICKER} ${gate.invalid ? BOX_INVALID : ''}`}
           value={value}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -620,11 +715,22 @@ export function DateField({ label, required, placeholder, className, value, onCh
 
 /** The only multi-line control in the design is 100 tall and top-aligned. */
 export function TextArea({ label, required, placeholder, className, value, onChange }: BaseProps) {
+  const gate = useGateField<HTMLTextAreaElement>(blankReason(required, label, value))
+
   return (
-    <FieldShell label={label} required={required} className={`w-full ${className ?? ''}`}>
+    <FieldShell
+      label={label}
+      required={required}
+      className={`w-full ${className ?? ''}`}
+      errorId={gate.messageId}
+      error={gate.message}
+    >
       <textarea
+        ref={gate.ref}
         placeholder={placeholder}
-        className={`${BOX} h-[100px] resize-y`}
+        aria-invalid={gate.invalid || undefined}
+        aria-describedby={gate.message ? gate.messageId : undefined}
+        className={`${BOX} h-[100px] resize-y ${gate.invalid ? BOX_INVALID : ''}`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
       />
@@ -641,11 +747,35 @@ export function SelectField({
   value,
   onChange,
 }: BaseProps & { options?: string[] }) {
+  /*
+   * A select's empty value is the disabled placeholder option, i.e. the same `''` a text field
+   * starts on, so one predicate covers both.
+   *
+   * `options.length > 0` is the guard that stops this being a trap. สถานศึกษา on the team step
+   * (`2053:289`) is `required` and is passed NO options — there is no school list in the repo
+   * yet — so it renders as a control whose only entry is the disabled placeholder. Gating a
+   * question the user is given no way to answer would wall every registrant off at step 2, so
+   * an optionless select declares nothing. **This needs a real list before launch**; the moment
+   * one is passed, the field gates itself with no other change.
+   */
+  const gate = useGateField<HTMLSelectElement>(
+    options.length > 0 ? blankReason(required, label, value) : null,
+  )
+
   return (
-    <FieldShell label={label} required={required} className={className}>
+    <FieldShell
+      label={label}
+      required={required}
+      className={className}
+      errorId={gate.messageId}
+      error={gate.message}
+    >
       <span className="relative w-full">
         <select
-          className={`${BOX} ${TRAIL} appearance-none bg-white`}
+          ref={gate.ref}
+          aria-invalid={gate.invalid || undefined}
+          aria-describedby={gate.message ? gate.messageId : undefined}
+          className={`${BOX} ${TRAIL} appearance-none bg-white ${gate.invalid ? BOX_INVALID : ''}`}
           value={value}
           onChange={(e) => onChange(e.target.value)}
         >
@@ -679,7 +809,7 @@ export function SectionTitle({ title, onClear }: { title: string; onClear?: () =
           `708:1298`'s 39-tall box at 28 — so the phone drops a section heading two steps below
           its page heading, where this was rendering them one apart. 1440 is unchanged: the ramp
           still lands on 28.000 at `--fl` = 1. */}
-      <h2 className="text-[calc(19.792px_+_8.208*var(--fl))] leading-[1.4] font-medium">{title}</h2>
+      <h2 className="text-[length:var(--t-20-28)] leading-[1.4] font-medium">{title}</h2>
       {onClear && (
         <button
           type="button"
@@ -687,7 +817,7 @@ export function SectionTitle({ title, onClear }: { title: string; onClear?: () =
           /* 14 -> 16, written out rather than taken from `fl-16`, whose floor is 15 and so was
              1px over the frame. `1239:1065` is 14 (get_design_context on `1214:204`) against
              `708:1302`'s 16. The gap ramps with the glyph: 4 on `1239:1062`, 8 on `708:1299`. */
-          className="mm-press flex shrink-0 items-start gap-[calc(3.896px_+_4.104*var(--fl))] text-[calc(13.948px_+_2.052*var(--fl))] leading-[normal] text-gray-2 transition-colors hover:text-ink"
+          className="mm-press flex shrink-0 items-start gap-[calc(3.896px_+_4.104*var(--fl))] text-[length:var(--t-14-16)] leading-[normal] text-gray-2 transition-colors hover:text-ink"
         >
           <img
             src={`${ICON}1b94090585ff7a3b45d6697db4f2aae8ed04747e.svg`}
@@ -717,13 +847,22 @@ export function UploadBox({
   hint = 'จำกัดขนาดเอกสารไม่เกิน 10 MB (PDF เท่านั้น)',
   kind = 'pdf',
   maxMB = 10,
+  requiredLabel,
 }: {
   hint?: string
-  kind?: 'image' | 'pdf'
+  kind?: keyof typeof FILE_KINDS
   maxMB?: number
+  /** Names this slot in the action bar while it is empty. Omit for an optional target. */
+  requiredLabel?: string
 }) {
   /* six of these per entrant step, and none of them used to answer a drag at all */
   const slot = useFileSlot({ kind, maxMB })
+
+  /* every document on `2053:365` / `2053:545` carries a `*` in its own label text, and until
+     now not one of them stopped the step advancing with nothing attached */
+  const gate = useGateField<HTMLInputElement>(
+    requiredLabel && !slot.file ? `ต้องแนบ${requiredLabel}` : null,
+  )
 
   return (
     /*
@@ -743,7 +882,9 @@ export function UploadBox({
        */}
       <label
         {...slot.drop}
-        className="auth-drop mm-press flex h-[calc(79.48px_+_20.52*var(--fl))] w-full cursor-pointer flex-col items-center justify-center gap-2.5 rounded-[20px] border border-dashed border-[#dcdcdc] hover:border-brand-red"
+        className={`auth-drop mm-press flex h-[calc(79.48px_+_20.52*var(--fl))] w-full cursor-pointer flex-col items-center justify-center gap-2.5 rounded-[20px] border border-dashed hover:border-brand-red ${
+          gate.invalid ? 'border-[#ea4335]' : 'border-[#dcdcdc]'
+        }`}
       >
         {slot.preview ? (
           /* the thumbnail stands in for the glyph, so it takes the glyph's own ramp scaled to
@@ -764,37 +905,84 @@ export function UploadBox({
         )}
         {/* 14 -> 16, written out (`fl-16` floors at 15): `1243:1378` is a 21-tall box, i.e. 14 at the 1.5
             this style is set at, against 16 at 1440. */}
-        <span className="w-full truncate px-3 text-center text-[calc(13.948px_+_2.052*var(--fl))] leading-[normal] font-medium">
+        <span className="w-full truncate px-3 text-center text-[length:var(--t-14-16)] leading-[normal] font-medium">
           {slot.file ? slot.file.name : 'อัปโหลดไฟล์'}
         </span>
-        <input {...slot.inputProps} className="hidden" />
+        {/*
+         * `sr-only`, not `hidden`. A `display: none` input is not focusable and is not in the
+         * accessibility tree, so this slot had nothing for the gate to send the reader TO and
+         * no element to hang `aria-invalid` on — and it could not be reached by keyboard at
+         * all, which was already a defect. `sr-only` is absolutely positioned at 1px, so it
+         * costs no layout, the wrapping label still opens the picker on click, and there is now
+         * a real control to focus.
+         */}
+        <input
+          {...slot.inputProps}
+          ref={gate.ref}
+          aria-invalid={gate.invalid || undefined}
+          aria-describedby={gate.messageId}
+          className="sr-only"
+        />
       </label>
       {/* 12 -> 16, written out: `1243:1379` is 12 on the phone frame against 16 at 1440. A hint
           under a control is the one caption that may go to 12 — it is not an input's own text,
-          so the 16px iOS-zoom floor that pins `BOX` does not apply to it. */}
+          so the 16px iOS-zoom floor that pins `BOX` does not apply to it.
+
+          One line, three states, in priority order: the gate's refusal, then a file the box
+          REFUSED (wrong type or over size), then the standing size rule. The first two are both
+          red and both about this slot, so they share the line rather than stacking two red
+          notes under a 100-tall box. It keeps ONE id in every state, so the input's
+          `aria-describedby` is a live reference whether it is describing the rule or the
+          refusal. */}
       <p
+        id={gate.messageId}
         aria-live="polite"
-        className={`w-full truncate text-[calc(11.896px_+_4.104*var(--fl))] leading-[normal] ${slot.error ? 'text-[#ea4335]' : 'text-gray-1'}`}
+        className={`w-full truncate text-[length:var(--t-12-16)] leading-[normal] ${gate.message || slot.error ? 'text-[#ea4335]' : 'text-gray-1'}`}
       >
-        {slot.error ?? hint}
+        {gate.message ?? slot.error ?? hint}
       </p>
     </div>
   )
 }
 
 /**
- * Numbered document requirement plus its upload target, on Figma's 32 gap. The number
- * is a real `<ol>` marker so the 30 indent and the counter match the design exactly.
+ * A document requirement plus its upload target, on Figma's 32 gap.
+ *
+ * NOT NUMBERED, and the `<ol>` that used to be here was invented. The current desktop frames
+ * draw each requirement as ONE plain text node flush with the content column's left edge —
+ * `2053:370` / `2053:378` (advisor) and `2053:550` / `2053:558` / `2053:566` (entrant) are all
+ * `TEXT` at x224, which is the column origin, with no `listOptions`, no ordered-list style and
+ * no leading digit in `characters`. The old markup drew "1." / "2." / "3." AND pushed every
+ * label 30px in from a left edge Figma has it sitting on. The `*` each label ends with is part
+ * of the string in the frame, which is why it stays inside the copy in registrationData.ts.
+ *
+ * `index` survives because the GATE still needs an ordinal: every one of these labels is a
+ * two-line legal sentence, and "ต้องแนบ<paragraph>" would be unreadable, so the refusal names
+ * "เอกสารข้อ N" instead. It is a string for a screen reader, not a visible marker.
+ *
+ * `hint` / `kind` exist because the three entrant rows do NOT share one caption: `2053:556` and
+ * `2053:564` are the PDF-only rule, but the photo row's `2053:572` reads
+ * "จำกัดขนาดเอกสารไม่เกิน 10 MB (JPG, PNG, PDF)" — and the box was refusing the JPG its own
+ * caption was about to promise. The default stays PDF-only, which is what the other five rows
+ * across the two steps say.
  */
-export function DocumentRow({ index, text }: { index: number; text: string }) {
+export function DocumentRow({
+  index,
+  text,
+  hint,
+  kind,
+}: {
+  index: number
+  text: string
+  hint?: string
+  kind?: keyof typeof FILE_KINDS
+}) {
   return (
     <div className="flex w-full flex-col gap-4 lg:flex-row lg:items-center lg:gap-8">
-      <ol start={index} className="min-w-0 flex-1 list-decimal">
-        <li className="ms-[30px] text-[calc(13.844px_+_6.156*var(--fl))] leading-[normal] font-medium">
-          {text}
-        </li>
-      </ol>
-      <UploadBox />
+      <p className="min-w-0 flex-1 text-[length:var(--t-14-20)] leading-[normal] font-medium">
+        {text}
+      </p>
+      <UploadBox requiredLabel={`เอกสารข้อ ${index}`} hint={hint} kind={kind} />
     </div>
   )
 }

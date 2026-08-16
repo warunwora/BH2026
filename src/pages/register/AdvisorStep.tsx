@@ -26,7 +26,7 @@ export default function AdvisorStep() {
               components/form/Field.tsx carries. `1239:1292` is 20/500 on a 28-tall box at 1.4 —
               not the 24 that was read off the wizard's PAGE title (`1236:584`, 34 tall) — and
               `708:1393` is 28/500 on 39. CONFIRMED: size and weight both already correct. */}
-          <h2 className="w-full text-[calc(19.792px_+_8.208*var(--fl))] leading-[1.4] font-medium">
+          <h2 className="w-full text-[length:var(--t-20-28)] leading-[1.4] font-medium">
             เอกสารสำหรับอาจารย์
           </h2>
           {/* 16 @402 → 24 @1440 between rows. Figma authors the two anchors differently — on the

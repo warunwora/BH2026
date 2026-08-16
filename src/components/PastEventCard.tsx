@@ -94,14 +94,19 @@ export default function PastEventCard({ event }: { event: PastEvent }) {
      *   1190:1584  rounded-[40px]
      *   1297:132   rounded-[40px]   (desktop, all three cards)
      *
-     * So the 24 is one card of four, and the other two PHONE cards agree with the desktop
-     * ones. A ramp 24 -> 40 would therefore be interpolating between a slip and the design;
-     * a flat 40 is the phone value on two of the three tiles and the 1440 value on all of
-     * them, which is why it is not written as `calc()` like everything else in this file.
+     * So the 24 is one card of four, and the other two PHONE cards agree with the desktop ones.
+     *
+     * SUPERSEDED 2026-08-16 — the user asked for the year tiles' corners to come in, and the
+     * reading above is what changes the answer rather than blocking it: `1190:1515` is not
+     * necessarily a slip, it is the only phone tile anybody drew twice, and 40 on a 280-wide
+     * phone card is a much larger fraction of the box than 40 on a 1120-wide desktop one. So
+     * this is now a RAMP through the two ends Figma actually contains — 24 on the phone tile,
+     * 40 at 1440 — which both honours the request and lands on the desktop value the other
+     * three nodes agree on. 1440 does not move.
      */
     <article
       ref={reveal.ref}
-      className={`relative flex min-h-[calc(646.1px_+_153.9*var(--fl))] flex-col overflow-clip rounded-[40px] p-[calc(23.58px_+_16.42*var(--fl))] max-md:w-[280px] max-md:flex-none max-md:snap-start md:flex-row md:items-start md:gap-x-[calc(100%*73/1120)] ${reveal.cls}`}
+      className={`relative flex min-h-[calc(646.1px_+_153.9*var(--fl))] flex-col overflow-clip rounded-[calc(23.58px_+_16.42*var(--fl))] p-[calc(23.58px_+_16.42*var(--fl))] max-md:w-[280px] max-md:flex-none max-md:snap-start md:flex-row md:items-start md:gap-x-[calc(100%*73/1120)] ${reveal.cls}`}
     >
       {photoCrop ? (
         // Figma frames the 2025 shot wider than the card and slides it left

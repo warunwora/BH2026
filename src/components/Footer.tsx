@@ -83,6 +83,65 @@ function BottomRow({ className = '' }: { className?: string }) {
   )
 }
 
+/**
+ * The sponsor lockup — `1419:1089` at 1440 and `1419:1393` at 402.
+ *
+ * Figma redrew this: it is now ONE row of four marks separated by three hairlines —
+ * KMUTT, คณะวิศวกรรมศาสตร์ / Faculty of Engineering, CPE, BangMod Hackathon 2026 — where the
+ * old lockup stacked the BH logo above a shorter strip of university marks, and the desktop
+ * row carried only three items.
+ *
+ * Every size is a two-anchor ramp through the two frames, so the row interpolates rather than
+ * stepping at a breakpoint:
+ *
+ *   gap        7  -> 12     KMUTT     28 -> 43     faculty  22 -> 33
+ *   CPE       22  -> 34     BH        26 -> 40     rule     34 -> 52
+ *
+ * Only HEIGHT is set. Each mark is its own SVG at its Figma aspect ratio, so `w-auto` lands on
+ * Figma's widths without a second number to keep in sync — 38/146/70/183 at 1440. The one
+ * exception is BH, which stays the existing `logo-nav.png`: Figma's SVG export of that frame
+ * embeds the raster and weighs 1.99 MB, against 150 KB for the PNG already in the bundle.
+ *
+ * The rules are `#b9b9b9` — read off `1419:1111`'s stroke, not the ink the previous lockup used.
+ *
+ * `shrink-0` throughout and the row is allowed to wrap on the phone: at 320 the lockup's own
+ * 329 would otherwise force the page to pan, which is the one thing this site may never do.
+ */
+const MARK_GAP = 'gap-[calc(6.87px_+_5.13*var(--fl))]'
+const RULE = 'w-px shrink-0 bg-[#b9b9b9] h-[calc(33.532px_+_18.468*var(--fl))]'
+
+function SponsorLockup({ className = '' }: { className?: string }) {
+  return (
+    <div className={`flex flex-wrap items-center justify-center ${MARK_GAP} ${className}`}>
+      <img
+        src="/assets/footer-kmutt.svg"
+        alt="มหาวิทยาลัยเทคโนโลยีพระจอมเกล้าธนบุรี"
+        className="h-[calc(27.61px_+_15.39*var(--fl))] w-auto shrink-0"
+      />
+      <span aria-hidden className={RULE} />
+      <img
+        src="/assets/footer-faculty.svg"
+        alt="คณะวิศวกรรมศาสตร์ Faculty of Engineering"
+        className="h-[calc(21.714px_+_11.286*var(--fl))] w-auto shrink-0"
+      />
+      <span aria-hidden className={RULE} />
+      <img
+        src="/assets/footer-cpe.svg"
+        alt="ภาควิชาวิศวกรรมคอมพิวเตอร์"
+        className="h-[calc(21.688px_+_12.312*var(--fl))] w-auto shrink-0"
+      />
+      <span aria-hidden className={RULE} />
+      <Link to="/" viewTransition className="mm-press shrink-0">
+        <img
+          src="/assets/logo-nav.png"
+          alt="BangMod Hackathon 2026"
+          className="h-[calc(25.636px_+_14.364*var(--fl))] w-auto"
+        />
+      </Link>
+    </div>
+  )
+}
+
 export default function Footer() {
   /*
    * G7 — the footer closes all three marketing pages and was the only band on any of them
@@ -148,35 +207,7 @@ export default function Footer() {
             column, 32 apart from each other where the outer gaps are 24. Nesting them is
             what puts the paragraph at Figma's y140 rather than 8px high. */}
         <div className="flex w-full flex-col items-center gap-8">
-          {/* 1190:835 — logo over marks, gap 12, the pair centred as a unit */}
-          <div className="flex flex-col items-center gap-3">
-            <Link to="/" viewTransition className="mm-press">
-              {/* 60 tall on BOTH frames: 1190:836 is 267x60 and the 1440 mark is 60 too, and
-                at 1600x360 the asset resolves 60 → 266.67 wide against Figma's 267. */}
-              <img src="/assets/logo-nav.png" alt="BangMod Hackathon 2026" className="h-[60px]" />
-            </Link>
-
-            {/* 1190:837 — 36-tall marks, 6px either side of a hairline rule */}
-            <div className="flex items-center gap-1.5">
-              <img
-                src="/assets/figma/334492fe4cb116291b1b34c10e03a9aa49cd8960.svg"
-                alt="มหาวิทยาลัยเทคโนโลยีพระจอมเกล้าธนบุรี"
-                className="h-9 w-[158.25px] shrink-0"
-              />
-              <span aria-hidden className="h-9 w-px shrink-0 bg-ink" />
-              {/* the same clipped window as the desktop row — see the note there for why the
-                artwork is sized in percentages of the window rather than by an inset pair.
-                1190:903 makes the window 42x22 instead of 57x28; the percentages are a real
-                ratio, so they crop identically at either size. */}
-              <span className="relative block h-[22px] w-[42px] shrink-0 overflow-hidden">
-                <img
-                  src="/assets/figma/b1f497a79771a763f521a081e6006d3a027a793f.svg"
-                  alt="ภาควิชาวิศวกรรมคอมพิวเตอร์"
-                  className="absolute top-[-30.12%] left-[-7.09%] h-[160.4353%] w-[114.0625%] max-w-none"
-                />
-              </span>
-            </div>
-          </div>
+          <SponsorLockup />
 
           {/* 1190:911 — 16/1.4 ink over 14/1.5 grey, 8 apart. `fl-18` and `fl-14` already
             resolve to exactly 16 and 14 at 402 (both are `max()`-floored), so the phone
@@ -217,7 +248,12 @@ export default function Footer() {
               aria-label={social.label}
               className="mm-link mm-press flex min-h-11 items-center gap-1 fl-18 leading-[1.4] hover:text-brand-red"
             >
-              <img src={social.icon} alt="" aria-hidden className="mm-icon-pop size-6" />
+              {/* a mask, not an <img>, so the glyph goes red with its label — see `.mask-icon` */}
+              <span
+                aria-hidden
+                style={{ '--icon': `url(${social.icon})` } as React.CSSProperties}
+                className="mask-icon mm-icon-pop size-6 shrink-0"
+              />
               {social.label}
             </a>
           ))}
@@ -244,52 +280,7 @@ export default function Footer() {
            * before, so the desktop footer is untouched.
            */}
           <div className="flex flex-col gap-5">
-            <div className="flex items-center gap-2 lg:gap-3">
-              <Link to="/" viewTransition className="mm-press shrink-0">
-                <img
-                  src="/assets/logo-nav.png"
-                  alt="BangMod Hackathon 2026"
-                  className="h-8 w-auto lg:h-[calc(44px_+_16*var(--fl))]"
-                />
-              </Link>
-              <span
-                aria-hidden
-                className="h-5 w-px shrink-0 bg-ink lg:h-[calc(36px_+_12*var(--fl))]"
-              />
-              <img
-                src="/assets/figma/334492fe4cb116291b1b34c10e03a9aa49cd8960.svg"
-                alt="มหาวิทยาลัยเทคโนโลยีพระจอมเกล้าธนบุรี"
-                className="h-[21px] w-[92.31px] shrink-0 lg:h-[calc(36px_+_12*var(--fl))] lg:w-[calc((36px_+_12*var(--fl))*4.3958)]"
-              />
-              <span
-                aria-hidden
-                className="h-5 w-px shrink-0 bg-ink lg:h-[calc(36px_+_12*var(--fl))]"
-              />
-              {/*
-               * Figma clips this mark to a 57x28 window with the drawing overflowing every
-               * edge — what you see is a crop of a 65.02x44.92 artwork, not the whole thing
-               * scaled to fit, which is why fitting it by height comes out too narrow.
-               *
-               * Sized with an explicit percentage width and height rather than by an inset
-               * pair. `inset` cannot size a REPLACED element: for an absolutely positioned
-               * image with `width: auto`, the used width is the intrinsic width and the
-               * `right` offset is simply dropped as over-constrained. At the Figma window
-               * that went unnoticed, because 57 x 1.1406 and 28 x 1.6044 come out at exactly
-               * the intrinsic 65.02x44.92 — the inset pair and the artwork agreed by
-               * construction. The moment the window shrank for the phone row the drawing
-               * stayed at full size and the window showed only the left 63% of it, which is
-               * why "cpe" came out as "cq". As percentages of the window the crop is a real
-               * ratio and holds at any size; at 57x28 it resolves to the same numbers as
-               * before, so the desktop mark is unchanged to the hundredth of a pixel.
-               */}
-              <span className="relative block h-5 w-[40.71px] shrink-0 overflow-hidden lg:h-7 lg:w-[57px]">
-                <img
-                  src="/assets/figma/b1f497a79771a763f521a081e6006d3a027a793f.svg"
-                  alt="ภาควิชาวิศวกรรมคอมพิวเตอร์"
-                  className="absolute top-[-30.12%] left-[-7.09%] h-[160.4353%] w-[114.0625%] max-w-none"
-                />
-              </span>
-            </div>
+            <SponsorLockup className="justify-start" />
 
             <div className="flex flex-col gap-2">
               {/* `708:375` is 600x50 — 2 lines at 18/1.4 — and its own wrap falls before
@@ -374,8 +365,13 @@ export default function Footer() {
                       className="mm-link mm-press flex items-center gap-2.5 fl-16 leading-[1.4] hover:text-brand-red"
                     >
                       {/* the glyph swells slightly with the row so the whole line, not just
-                          the label, acknowledges the hover */}
-                      <img src={social.icon} alt="" aria-hidden className="mm-icon-pop size-6" />
+                          the label, acknowledges the hover — and it is a mask rather than an
+                          <img>, so it takes the label's colour too (`.mask-icon` in index.css) */}
+                      <span
+                        aria-hidden
+                        style={{ '--icon': `url(${social.icon})` } as React.CSSProperties}
+                        className="mask-icon mm-icon-pop size-6 shrink-0"
+                      />
                       {social.label}
                     </a>
                   ))}

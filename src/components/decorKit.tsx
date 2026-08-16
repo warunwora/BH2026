@@ -254,6 +254,13 @@ export function flowVars(
     '--pasta-duration': `${duration}ms`,
     '--pasta-idle-delay': `${delay + duration}ms`,
     '--pasta-idle-duration': `${17000 + ((i * 61) % 9) * 1900}ms`,
+    /*
+     * The round trip's period. 16s, of which the first 30% is a dead-still hold — about the
+     * five seconds asked for — and the rest is the two travels. Per-piece variation is kept for
+     * the same reason it always was: twenty tubes on one clock read as a slab rather than as a
+     * drift. `linear` on the animation itself, because every segment names its own easing.
+     */
+    '--pasta-cycle-duration': `${16000 + ((i * 61) % 9) * 900}ms`,
     '--pasta-idle-x': nudge(spin * (5 + ((i * 43) % 5) * 1.8)),
     '--pasta-idle-y': nudge(3 + ((i * 29) % 4) * 1.6),
     '--pasta-idle-r': `${spin * (1.1 + ((i * 23) % 4) * 0.5)}deg`,

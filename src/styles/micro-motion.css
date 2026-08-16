@@ -508,6 +508,30 @@
     translate: 0 0;
   }
 
+  /* ------------------------------------------------ one plate, one arrival
+   *
+   * The calendar's two gradient highlight cards publish their reveal stagger as
+   * `--hl-stagger` (components/Calendar.tsx) instead of writing `--reveal-delay` directly.
+   * Below `md` they are two stacked cards and the 70ms ladder between them is the same
+   * stagger every other card group on the page uses. From `md` up they are two WINDOWS ONTO
+   * ONE PHOTOGRAPH — the same 834.211-wide plate of spaghetti, laid across the row and cut by
+   * the gap between the cards — so anything that moves one card without the other tears the
+   * bowl along that cut. With the ladder in force the two halves ran the reveal's 24px rise
+   * 70ms apart and the join opened by up to 11.7px, measured, for the length of the arrival.
+   *
+   * Zeroing the STAGGER rather than the delay is what keeps this to one line: `.mm-settle` on
+   * the plate and the `.reveal` on the card both read `--reveal-delay`, and both want the same
+   * answer here. The cards still arrive on the ladder relative to the rest of the page,
+   * because the ladder that matters at this width is the section's, not the pair's.
+   *
+   * Outside the motion guard would be wrong and outside `md` would be wrong; it is a property
+   * that only exists to be read by the two transitions below, and only from `md` up. */
+  @media (min-width: 48rem) {
+    .hl-row > * {
+      --hl-stagger: 0ms;
+    }
+  }
+
   /* ------------------------------------------------------------------------ the settle
    * One piece of card art that starts a few percent off its resting size and closes onto it,
    * a beat behind the card. Two call sites, one rule, because the direction is a variable:

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import AuthPageShell from '../components/AuthPageShell'
 import { authLink, useOwnArrival } from '../components/form/wizardNav'
+import { REGISTER_TYPE_CLASS, RegisterType } from '../components/form/registerType'
 import { DOCUMENT_GROUPS } from '../data'
 
 /**
@@ -96,6 +97,7 @@ export default function Register() {
 
   return (
     <AuthPageShell>
+      <RegisterType />
       {/*
        * `auth-sheet` is the view-transition name that makes this card spring up over the
        * colour blocks as they morph out of the sign-in layout, and then carries the same
@@ -130,14 +132,14 @@ export default function Register() {
        * uniform `p-` ramp was 16px short at the top on the phone.
        */}
       <div
-        className={`auth-sheet ${spring ? 'auth-sheet-spring' : ''} mt-[calc(23.584px_+_16.416*var(--fl))] flex min-h-0 flex-1 flex-col items-start gap-8 rounded-t-[calc(19.688px_+_12.312*var(--fl))] rounded-b-[calc(20.52px_-_20.52*var(--fl))] bg-white px-[calc(23.584px_+_16.416*var(--fl))] pt-10 pb-[calc(23.584px_+_16.416*var(--fl))] shadow-soft`}
+        className={`auth-sheet ${REGISTER_TYPE_CLASS} ${spring ? 'auth-sheet-spring' : ''} mt-[calc(23.584px_+_16.416*var(--fl))] flex min-h-0 flex-1 flex-col items-start gap-8 rounded-t-[calc(19.688px_+_12.312*var(--fl))] rounded-b-[calc(20.52px_-_20.52*var(--fl))] bg-white px-[calc(23.584px_+_16.416*var(--fl))] pt-10 pb-[calc(23.584px_+_16.416*var(--fl))] shadow-soft`}
       >
         {/* `1214:143` is 24 and `708:1191` is 40, both 600/1.4 — so the phone frame is 4px
             under `fl-display`'s 28 floor and the phone frame wins, overridden here rather
             than in the shared rank. 1440 is `fl-display`'s own ceiling, unchanged. Centred on
             the phone (`1214:143` sits at x74.5 of a 306 column) and left from `md`, which is
             where the two requirement sections become rows (`708:1191` is LEFT). */}
-        <h1 className="w-full shrink-0 text-center text-[calc(23.584px_+_16.416*var(--fl))] leading-[1.4] font-semibold md:text-start">
+        <h1 className="w-full shrink-0 text-center text-[length:var(--t-24-40)] leading-[1.4] font-semibold md:text-start">
           ลงทะเบียนเข้าแข่งขัน
         </h1>
 
@@ -161,18 +163,28 @@ export default function Register() {
          * unreachable by keyboard — the CTA below is a sibling and stays in tab order either
          * way, this is what lets a keyboard user read past the fold before they get there.
          *
-         * `safe center` and not plain `center`: `708:1192` is `primaryAxisAlignItems: CENTER`
-         * (it is 572 of content in 572, so centring is a no-op at 1440 and this is Figma's
-         * intent for a tall viewport), but a centred flex column that OVERFLOWS puts its
-         * first line above the scroll origin and makes it unreachable. `safe` falls back to
-         * `start` exactly when it overflows, and where it is unsupported the whole
-         * declaration drops and Tailwind's default `flex-start` is already the safe answer.
+         * THE LIST STARTS AT THE TOP, and `[justify-content:safe_center]` is gone. `708:1192`
+         * is `primaryAxisAlignItems: CENTER`, but that frame holds 572 of content in 572 — the
+         * centring is a no-op in the frame it was authored in, and reading it as intent was
+         * what put a growing band of white between the heading and the first requirement.
+         * Measured on the live page against `708:1193`, which Figma draws flush with this
+         * box's own top edge (both at y320):
+         *
+         *   1440x1024   first section 15.4px low   (Figma: 0)
+         *   1440x1200   103.4px low
+         *   1440x1400   203.4px low
+         *
+         * — i.e. the taller the viewport, the further the content sank, and at Figma's own
+         * 1024 it was already 15px out. `safe` only ever caught the OVERFLOW case (1280x900
+         * measured 0, correctly); it does nothing about spare room, which is the case that was
+         * actually wrong. Flex's default `flex-start` is both what Figma renders and what keeps
+         * the first line reachable when the list overflows, so there is nothing left to state.
          */}
         <div
           tabIndex={0}
           role="group"
           aria-label="เอกสารที่ต้องเตรียม"
-          className="flex w-full min-h-0 flex-1 flex-col gap-4 overflow-x-clip overflow-y-auto overscroll-contain [justify-content:safe_center]"
+          className="flex w-full min-h-0 flex-1 flex-col gap-4 overflow-x-clip overflow-y-auto overscroll-contain"
         >
           {SECTIONS.map((section) => (
             /* `1214:145` — VERTICAL, gap 16, radius 24, NO padding, items centred.
@@ -207,9 +219,10 @@ export default function Register() {
 
               {/* `1214:147` / `708:1195` — VERTICAL, gap 16 on both. */}
               <div className="flex w-full flex-1 flex-col items-start gap-4">
-                {/* `fl-24` is 20 → 24, which is `1214:148` and `708:1196` exactly. Both are
+                {/* 20 → 24, which is `1214:148` and `708:1196` exactly, now spent through the
+                    flow's `--t-20-24` so the user's desktop trim reaches it too. Both are
                     500/1.4. Centred on the phone, LEFT at 1440. */}
-                <h2 className="w-full text-center fl-24 leading-[1.4] font-medium md:text-start">
+                <h2 className="w-full text-center text-[length:var(--t-20-24)] leading-[1.4] font-medium md:text-start">
                   {section.title}
                 </h2>
                 {/* `1214:149` is 14/1.5/300 and `708:1197` is 20/1.5/300. 14 is 3px under
@@ -219,7 +232,7 @@ export default function Register() {
                     Figma sets no paragraph spacing — 3 + 3 + 1 bullets fill `1214:149`'s 147
                     at 21/line and 3 + 2 + 1 fill `708:1197`'s 180 at 30 — so the list items
                     are consecutive lines with no gap between them. */}
-                <ul className="w-full text-[calc(13.844px_+_6.156*var(--fl))] leading-[1.5] font-light">
+                <ul className="w-full text-[length:var(--t-14-20)] leading-[1.5] font-light">
                   {section.items.map((item) => (
                     <li key={item} className={BULLET}>
                       {item}
@@ -246,7 +259,7 @@ export default function Register() {
              against 20 on `708:1204` — the phone's 16 is under `fl-20`'s 17 floor, so the
              frame wins here as it does for the body copy above, and both ramps land on the
              1440 value they already had. Weight is 600 on both. */
-          className="mm-press flex h-[calc(48.714px_+_11.286*var(--fl))] w-full shrink-0 items-center justify-center rounded-[calc(15.896px_+_4.104*var(--fl))] bg-brand-red px-6 py-4 font-display text-[calc(15.896px_+_4.104*var(--fl))] leading-[normal] font-semibold text-white transition-opacity hover:opacity-90"
+          className="mm-press flex h-[calc(48.714px_+_11.286*var(--fl))] w-full shrink-0 items-center justify-center rounded-[calc(15.896px_+_4.104*var(--fl))] bg-brand-red px-6 py-4 font-display text-[length:var(--t-16-20)] leading-[normal] font-semibold text-white transition-opacity hover:opacity-90"
         >
           ลงทะเบียน
         </Link>

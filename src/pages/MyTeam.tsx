@@ -390,7 +390,27 @@ export default function MyTeam() {
                 className="auth-rise auth-rise-sm flex w-full flex-col items-center gap-4 text-center sm:flex-row sm:items-start sm:text-start"
                 data-rise="1"
               >
-                <div className="size-[116px] shrink-0 rounded-2xl bg-[#ebebeb] sm:size-auto sm:aspect-square sm:self-stretch" />
+                {/*
+                 * The team photo plate. FLAT 116 at every width, and the `sm:` trio that used to
+                 * follow it — `size-auto aspect-square self-stretch` — is deleted because it
+                 * rendered the box **0px wide** from `sm` up.
+                 *
+                 * Why it collapsed: `size-auto` clears both width and height, `self-stretch`
+                 * then makes the height definite only after the row has been laid out, and
+                 * `aspect-square` cannot derive a width from a height that is not definite at
+                 * the time it resolves — so Chrome settles on 0. Measured at 1440: plate 0 wide,
+                 * and the row's own 16px `gap` still applied, which is what pushed `ทีม A`,
+                 * `รหัสทีม` and `สถานศึกษา` to 32 from the card's edge while the tabs and the
+                 * numbered headings below sat at 16. That 16px step is the "padding ไม่เท่ากัน"
+                 * the user reported — nothing in the card was actually mis-padded.
+                 *
+                 * 116 is Figma's own phone value (`1297:812`'s photo plate). The DESKTOP frame
+                 * for this card could not be located in the file, so rather than invent a
+                 * number the square keeps the one value Figma does state. If the desktop plate
+                 * turns out to be larger, this is a one-token change — but a stated 116 is
+                 * strictly better than a computed 0.
+                 */}
+                <div className="size-[116px] shrink-0 rounded-2xl bg-[#ebebeb]" />
                 <div
                   className={`flex min-w-0 flex-1 flex-col items-center ${LOCKUP_STACK_GAP_8_16} sm:items-start`}
                 >

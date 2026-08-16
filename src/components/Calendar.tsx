@@ -13,7 +13,6 @@ const spaghetti = '/assets/figma/ace844a0c921e340e3257f408b288273f191b3d8.png'
  * the design draws. Painting the asset straight into a 36 box, which is what the old
  * full-bleed export allowed, would scale the glyph up by 36/28.49 and crop its plus.
  */
-const addToCalendar = '/assets/figma/f21d82687451482102940d178bad96bdbe1f3db6.svg'
 
 /**
  * The row splits 700 / 476 inside the 1200 content column — expressed as grid `fr`
@@ -50,25 +49,97 @@ const addToCalendar = '/assets/figma/f21d82687451482102940d178bad96bdbe1f3db6.sv
  *
  * as fractions of the 354x200 card: left 40.678% / 43.503%, top 9.505%.
  */
+/*
+ * ============================================ ONE PLATE, TWO WINDOWS (from `md` up)
+ *
+ * `708:171` (in the 700-wide card `708:162`) and `708:180` (in the 476-wide card `708:172`)
+ * are not two plates. They are the SAME rectangle — same `imageRef`
+ * (`ace844a0c921e340e3257f408b288273f191b3d8`), same `imageTransform`, same 834.2105 x
+ * 441.1972 box, rotation 0 — laid across the row at very nearly the same absolute x and
+ * clipped by each card's own `clipsContent`. Card A shows the plate's left 531.5px, card B
+ * its right 282.7px, and the 24px gutter swallows what falls between. It is one photograph
+ * of one bowl, cut by the gap between two cards.
+ *
+ * WHAT WAS WRONG, and why it only showed away from 1440. Each half used to be sized and
+ * placed as a percentage of ITS OWN card — 119.173% / 24.073% of the 700 card and 175.254% /
+ * -115.86% of the 476 one. Those two percentages resolve to the same 834.211px box at
+ * exactly one viewport width, because the cards themselves are 700 and 476 at exactly one
+ * viewport width: the row's split RAMPS (`--hl-split`, 0.5 at 768 -> 0.5952381 at 1440), so
+ * below 1440 the two cards are different fractions of the row than Figma's, and the two
+ * halves came out at different SCALES as well as different offsets. Measured on the live
+ * page: at 1440 both halves are 834.2 wide and the join is Figma's; at 1024 they are 537.9
+ * and 684.0, and at 768 they are 378.9 and 557.2. Two different-sized bowls, one per card —
+ * which is exactly the "two separate plates that do not connect" the review reported.
+ *
+ * SO THE PLATE IS MEASURED AGAINST THE ROW, NOT AGAINST EITHER CARD. `.hl-row` carries
+ * `container-type: inline-size` (below), so `cqw` is one percent of the ROW's width at every
+ * viewport, and both halves take their width from the same unit. Figma's own three numbers,
+ * as fractions of the 1200 column (`708:161`):
+ *
+ *   width  834.2105 / 1200 = 69.517542%   both halves
+ *   left   168.5137 / 1200 = 14.042808%   card A's left edge IS the row's left edge
+ *   right  100 - 14.042808 - 69.517542 = 16.439650%   card B's right edge IS the row's right
+ *
+ * Anchoring card B from the RIGHT is what keeps this independent of `--hl-split`: card B is
+ * the last column, so its right edge is the row's right edge whatever the split does, and the
+ * offset never has to name the split at all. That matters twice over — index.css carries an
+ * `@supports not` fallback for `--hl-split` (CSS trig), and a `left` written in terms of it
+ * would have gone invalid alongside it.
+ *
+ * At 1440 this resolves to left 168.514 / width 834.211 for card A and, for card B,
+ * 476 - 197.276 - 834.211 = -555.486 from its own left edge, i.e. absolute x 288.514 —
+ * Figma's number for card A to three decimals.
+ *
+ * IT ALSO CLOSES FIGMA'S OWN 4px SLIP. `708:171` sits at absolute x 288.5137 and `708:180` at
+ * 292.5137: the file has the right half four pixels further right than the left half, so the
+ * strands do not quite meet across the gutter even in the design. One shared origin is the
+ * whole point of the composition, so both halves take card A's x and the seam closes. This is
+ * a deliberate departure from the file, and the only one on this element.
+ *
+ * BELOW `md` NOTHING HERE APPLIES. The phone frame is genuinely two plates: `1190:604` and
+ * `1190:613` are the same image but individually rotated (-7.727deg and +174.712deg, i.e. the
+ * second one flipped) inside two stacked 354x200 cards, with no join to make. Every rule in
+ * this block is `md:`-prefixed and the phone geometry above is untouched.
+ */
+const PLATE_W = 'md:w-[69.517542cqw]'
+
 const TONE = {
   red: {
     card: 'from-red-grad-from to-red-grad-to',
-    /* 1190:604 below md, 935:451's own slice from md up */
-    bowl: 'left-[40.678%] [transform:rotate(-7.73deg)] md:left-[24.073%] md:w-[119.173%]',
+    /* 1190:604 below md; from md up the plate's left edge, measured from the row's left,
+       which is also this card's left. */
+    bowl: `left-[40.678%] [transform:rotate(-7.73deg)] md:left-[14.042808cqw] ${PLATE_W}`,
   },
   yellow: {
     card: 'from-yellow-grad-from to-yellow-grad-to',
-    /* 1190:613 is the same plate mirrored and turned most of the way round */
+    /* 1190:613 is the same plate mirrored and turned most of the way round; from md up it is
+       the SAME rectangle as the red card's, anchored to the row's right edge (see above) so
+       the two windows show one continuous bowl. `left-auto` is required — `left` wins over
+       `right` while both are set, and the phone rule above sets it. */
     bowl:
       'left-[43.503%] [transform:rotate(174.71deg)_scaleY(-1)] ' +
-      'md:left-[-115.86%] md:w-[175.254%]',
+      `md:left-auto md:right-[16.439650cqw] ${PLATE_W}`,
   },
 }
 
 /** Shared by both tones: 1190:604's box below md, then Figma's own top offset from md up. */
+/*
+ * `--reveal-delay: 0ms` from `md` up, and only on this box. The two cards stagger by 70ms
+ * (`i * 70`, below) because below `md` they are two stacked cards arriving one after the
+ * other — but from `md` up they are two windows onto ONE plate, and `.mm-settle` reads
+ * `--reveal-delay` for its own delay (micro-motion.css). Staggered, the two halves of the
+ * bowl ran their 1.06 -> 1 settle 70ms apart, so for the length of the arrival the seam
+ * opened and closed again. Overriding the property HERE rather than on the article leaves
+ * the cards' own reveal ladder intact — that rule matches the `<article>`, this one only
+ * reaches `.mm-settle`.
+ *
+ * The settle itself is safe for the join: both halves are now the same absolute rectangle, so
+ * a `scale` about each one's own 50%/50% centre is a scale about the same point in the page,
+ * and the plate grows and shrinks as one object rather than as two.
+ */
 const BOWL_BOX =
   'absolute aspect-[834.211/441.197] w-[106.29%] top-[9.505%] ' +
-  'md:top-[12.16%] md:[transform:none]'
+  'md:top-[12.16%] md:[transform:none] md:[--reveal-delay:0ms]'
 
 /* Phone-specified type and metrics. Each ramp passes through the 402 frame's value and
    lands on the verified 1440 value, so the desktop design is untouched. */
@@ -127,6 +198,23 @@ const STACK_GAP = 'gap-[calc(12px_+_12*var(--fl))]'
 const HL_ROW_VARS = {
   '--hl-gap': 'calc(12px + 12 * var(--fl))',
   '--hl-split': 'calc(0.44430273 + 0.15093537 * tan(atan2(var(--fl), 1px)))',
+  /*
+   * What makes `cqw` mean "one percent of the ROW" inside either card — see the plate note
+   * above `TONE`. It is what lets the two halves of one photograph be sized and placed
+   * against a single shared length instead of against two cards whose widths ramp apart.
+   *
+   * `inline-size` and never `size`: size containment would make this box compute its own
+   * BLOCK size with its contents ignored, and the row's height is exactly what its two cards
+   * supply. Inline-size containment applies `contain: layout style inline-size`, none of
+   * which is paint containment — so no backdrop root is created here, which matters because
+   * this page mounts ScrollEdgeEffect and that component's layers must keep sampling the
+   * page (the standing rule is written out in ScrollEdgeEffect.tsx).
+   *
+   * Written as an inline style rather than as Tailwind's `@container` utility so it cannot be
+   * separated from the two `--hl-*` values it exists to sit beside, and so it is impossible
+   * to drop the container while leaving the `cqw` lengths that depend on it.
+   */
+  containerType: 'inline-size',
 } as React.CSSProperties
 
 const HL_ROW_COLS = 'md:grid-cols-[calc((100%_-_var(--hl-gap))*var(--hl-split))_minmax(0,1fr)]'
@@ -145,7 +233,20 @@ function HighlightCard({ item, i }: { item: (typeof TIMELINE_HIGHLIGHTS)[number]
   return (
     <article
       ref={reveal.ref}
-      style={{ '--reveal-delay': `${i * 70}ms` } as React.CSSProperties}
+      /*
+       * The 70ms ladder is a PHONE ladder, and it has to be able to say so. Below `md` these
+       * are two stacked cards and the second arriving a beat after the first is the whole
+       * point; from `md` up they are two windows onto ONE plate (see the note above `TONE`),
+       * and a stagger there tore the bowl in half — the reveal's own 24px rise ran 70ms apart
+       * on the two cards, so the join opened by up to 11.7px (measured) for the length of the
+       * arrival and closed again.
+       *
+       * So the delay is published through `--hl-stagger`, whose fallback IS the ladder, and
+       * micro-motion.css zeroes that one variable from `md` up. An inline style cannot carry a
+       * media query and would beat any class that tried to override `--reveal-delay` outright,
+       * so the indirection is what makes the value reachable from CSS at all.
+       */
+      style={{ '--reveal-delay': `var(--hl-stagger, ${i * 70}ms)` } as React.CSSProperties}
       /* 500 is the Figma height at 1440; 1190:595/605 fix the phone card at 200, and the
          ramp between them passes through 200 at exactly 402. The old 208 floor came from
          guessing what the phone card's content asks for — it asks for 142. */
@@ -179,37 +280,14 @@ function HighlightCard({ item, i }: { item: (typeof TIMELINE_HIGHLIGHTS)[number]
         <p className={`${HL_DATE} leading-[1.4] font-medium`}>{item.date}</p>
         <p className={`${HL_LABEL} leading-[1.4] font-normal`}>{item.label}</p>
       </div>
-      {/* 1190:600 — a 24 icon 8 from its label on the phone, 36 and 12 at 1440 */}
-      <p className="fl-lead relative flex items-center gap-[calc(8px_+_4*var(--fl))] leading-[1.5]">
-        <span
-          aria-hidden
-          className="relative block size-[calc(23.688px_+_12.312*var(--fl))] shrink-0 overflow-clip"
-        >
-          {/*
-           * The inset goes on a SPAN, with the image filling it — not on the `<img>` itself.
-           * An `<img>` is a REPLACED element, and for an absolutely positioned replaced box
-           * with `width: auto` CSS resolves the width to the image's INTRINSIC width and then
-           * discards the over-constrained `right` (CSS 2.1 10.3.7). So four insets position an
-           * image without sizing it. This SVG is natively 28.4947 square, and the inset asks
-           * for 79.12% of the box — which happens to be 28.48 at 1440's 36px box, so the bug
-           * was invisible there, and 19.0 at the phone's 24px box, where the glyph rendered at
-           * 28.5 and was cropped by the `overflow-clip` above. A span is non-replaced, so
-           * `width: auto` between two insets fills the box as intended.
-           */}
-          <span className="absolute inset-[12.52%_8.36%_8.36%_12.49%] block">
-            <img src={addToCalendar} alt="" className="block size-full" />
-          </span>
-        </span>
-        {/*
-         * "บันทึกลงปฏิทิน", not the older "เพิ่มไปยังปฏิทิน". Both desktop cards were retyped
-         * (708:170 and 708:179) while the two phone cards (1190:603 / 1190:612) still carry the
-         * old wording — and every one of the four LAYERS is still named "เพิ่มไปยังปฏิทิน
-         * Container", which is what dates the edit: the names were set when the old string was
-         * the content, so the desktop text is the later of the two. One responsive page cannot
-         * hold two labels anyway, so the newer one wins at every width.
-         */}
-        บันทึกลงปฏิทิน
-      </p>
+      {/*
+       * The "บันทึกลงปฏิทิน" row is REMOVED, on the user's instruction (2026-08-16), even though
+       * Figma still draws it on all four cards (`708:170` / `708:179` at 1440, `1190:603` /
+       * `1190:612` at 402). It was never wired to anything: a `<p>` with an icon, styled like a
+       * control, with no handler, no href and no focusability — it promised to add the date to a
+       * calendar and did nothing. Deleting it is the honest fix; if it comes back it needs a real
+       * .ics download behind it, at which point it should be a `<button>`.
+       */}
     </article>
   )
 }

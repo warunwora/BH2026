@@ -256,11 +256,87 @@
    until it finishes and the idle owns it from then on, with no gap and no third element to
    nest. `will-change` is deliberately not set: this runs for the life of the page, and
    twenty permanently promoted layers is a worse trade here than on a 2s entrance. */
+/* -------------------------------------------------------- the round trip ----
+ *
+ * After the arrival the band holds for about five seconds, drifts OUT to the RIGHT, and then
+ * comes back in from the left exactly the way it first arrived — for ever. Asked for directly:
+ * "เว้นสัก 5 วิ แล้วค่อย ๆ ลอยออกไปทางขวา คล้ายตอนลอยเข้า แล้วจากนั้นค่อย loop กลับไปลอยเข้าเหมือนเดิม".
+ *
+ * IT IS A CONVEYOR, NOT A REWIND, and that is the whole correction over the first attempt. That
+ * version sent the pieces back out the way they came — left — and then played the return along
+ * the same path, which reads as a video being scrubbed backwards. Here the exit is the MIRROR of
+ * the entrance (`--pasta-dx` negated, so leftwards-in becomes rightwards-out) and the piece is
+ * then teleported back to the entrance pose at 50%, WHILE `opacity` is 0. A jump nobody can see
+ * is what turns a there-and-back into a loop that only ever travels one way.
+ *
+ * ONE keyframe, because `pasta-idle` and a round trip would both be writing `transform` on the
+ * same element and the later animation in the list wins for as long as it runs — the idle never
+ * stops, so it would win permanently and the trip would never play. `decorKit` gives each piece
+ * a single animatable box (the flow class rides the outer div precisely because Figma's own
+ * transform owns the inner one), so there is no second element to split them across either.
+ *
+ * THE IDLE DRIFT IS GONE, and that is a performance fix rather than a taste one. It kept up to
+ * twenty large PNGs compositing on every frame for the whole of the resting half; with the trip
+ * folded in on top, the band visibly stuttered. The hold is now genuinely static — no transform
+ * changes at all between 0% and 30% — so the compositor has nothing to do for five seconds out
+ * of every sixteen, and the only moving frames are the two travels.
+ */
+@keyframes pasta-cycle {
+  /* --- the hold: five seconds, completely still --- */
+  0%,
+  30% {
+    transform: none;
+    opacity: 1;
+    animation-timing-function: cubic-bezier(0.55, 0, 0.85, 0.35);
+  }
+
+  /* --- out to the RIGHT: the entrance mirrored, gathering speed as it goes --- */
+  46% {
+    transform: translate3d(calc(var(--pasta-dx) * -1), calc(var(--pasta-dy) * -1), 0)
+      rotate(calc(var(--pasta-spin) * -1)) scale(var(--pasta-scale));
+    opacity: 0;
+  }
+
+  /*
+   * The teleport. Same frame, opposite side: back to the arrival's own 0% pose, the one
+   * `.pasta-flow-armed` parks on. Invisible, so it costs nothing to look at, and it is what
+   * makes the next travel an entrance rather than a reversal.
+   */
+  50% {
+    transform: translate3d(var(--pasta-dx), var(--pasta-dy), 0) rotate(var(--pasta-spin))
+      scale(var(--pasta-scale));
+    opacity: 0;
+    animation-timing-function: cubic-bezier(0.33, 1, 0.68, 1);
+  }
+
+  /* --- and in from the left, through the arrival's own overshoot --- */
+  62% {
+    opacity: 1;
+  }
+
+  84% {
+    transform: translate3d(var(--pasta-px), var(--pasta-py), 0) rotate(0deg) scale(1);
+    opacity: 1;
+    animation-timing-function: var(--mm-ease, cubic-bezier(0.4, 0, 0.2, 1));
+  }
+
+  92%,
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* Two animations on one property: the arrival is `both`, so it would hold the piece for
+   ever, but a later animation in the list wins over an earlier one *while it is running*,
+   and the cycle's delay is exactly when the arrival ends. So the arrival owns the transform
+   until it finishes and the cycle owns it from then on, with no gap and no third element to
+   nest. `will-change` is deliberately not set: this runs for the life of the page, and
+   twenty permanently promoted layers is a worse trade here than on a 2s entrance. */
 .pasta-flow {
   animation:
     pasta-flow var(--pasta-duration) cubic-bezier(0.33, 1, 0.68, 1) var(--pasta-delay) both,
-    pasta-idle var(--pasta-idle-duration) cubic-bezier(0.37, 0, 0.63, 1) var(--pasta-idle-delay)
-      infinite;
+    pasta-cycle var(--pasta-cycle-duration) linear var(--pasta-idle-delay) infinite;
 }
 
 /* The animation is only ever armed from JS, which does not arm it under reduced motion —

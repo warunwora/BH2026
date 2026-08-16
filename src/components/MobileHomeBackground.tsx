@@ -107,15 +107,28 @@ const F = {
   steps: { top: 2253, bottom: 3834 }, // 1190:626, y 2253, h 1581 (was h 1557)
   prizes: { top: 3924, bottom: 4573 }, // 1190:750, y 3924, h 649 (was h 565)
   /*
-   * Re-read 2026-08-07 off the live frame: `1190:831` is at y **4726**, not the 4637 this
-   * line carried, and the frame is 5198 tall rather than 5109. 4637 was the pre-footnote
-   * reading; the two footnotes Figma added (`1297:2057` under the calendar grid, `1297:2061`
-   * under the prize cards) grew the sections above it and pushed the footer down 89, and this
-   * one entry was not re-solved with the other four. It is the anchor for BOTH hung groups
-   * below, so the error was paid twice: the cheese pile sat 89 too deep under the footer and
-   * the strand fan 45 too deep (the fan carried its own stale y as well — see CLOSING_WAVES).
+   * Re-read 2026-08-07 off the live frame: `1190:831` is at y 4726, not the 4637 this line
+   * carried, and the frame is 5198 tall rather than 5109. 4637 was the pre-footnote reading;
+   * the two footnotes Figma added (`1297:2057` under the calendar grid, `1297:2061` under the
+   * prize cards) grew the sections above it and pushed the footer down 89, and this one entry
+   * was not re-solved with the other four. It is the anchor for BOTH hung groups below, so the
+   * error was paid twice: the cheese pile sat 89 too deep under the footer and the strand fan
+   * 45 too deep (the fan carried its own stale y as well — see CLOSING_WAVES).
+   *
+   * Re-read again 2026-08-16 off `/v1/files/.../nodes?ids=1190:558`, frame origin (17896, 487):
+   * `1190:831`'s `absoluteBoundingBox.y` is 5287, i.e. **4800** in the frame. 4726 was short by
+   * a further 74 and both hung groups were paying it again — this is the third time this one
+   * number has moved and the second time it has been the whole of a "the closing artwork is in
+   * the wrong place" report. The two constants below are the only readers of it, and they are
+   * derived rather than written, so correcting it here is the entire fix on this side.
+   *
+   * It also fixes the band the artwork stands in: Figma's prizes section ends at 4573, so the
+   * gap to the footer is 4800 − 4573 = 227, and the page's own phone tail is that 227 (see the
+   * tail note in Home.tsx). Neither number means anything without the other — the fan is hung
+   * off the footer's top edge, so a correct offset into a band only 70px tall still puts it
+   * under the footer. Move them together.
    */
-  footer: { top: 4726 }, // 1190:831, y 4726 (was read 4637, and 4655 before that)
+  footer: { top: 4800 }, // 1190:831, y 4800 (was read 4726, 4637, and 4655 before that)
 }
 
 /*
@@ -445,8 +458,8 @@ const CHEESE: DecorNode = { x: 218, y: 4529, w: 341, h: 239, kids: [
  * footer starts at every width, so these two offsets put both groups on the footer the way
  * Figma puts them there. Same reading the 1440 canvas gives "Home Buttom".
  */
-const CLOSING_WAVES_BOTTOM = F.footer.top - (CLOSING_WAVES.y + CLOSING_WAVES.h) // -222.997
-const CHEESE_BOTTOM = F.footer.top - (CHEESE.y + CHEESE.h) // -42
+const CLOSING_WAVES_BOTTOM = F.footer.top - (CLOSING_WAVES.y + CLOSING_WAVES.h) // -148.997
+const CHEESE_BOTTOM = F.footer.top - (CHEESE.y + CHEESE.h) // +32
 
 /** Per-piece flight and idle for the phone band: same derivation, distances at the 0.48 the
  *  art is drawn at, and the phone's own pile threshold. Keyed by node so a flight belongs to

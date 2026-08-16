@@ -3,9 +3,55 @@ import { Link } from 'react-router-dom'
 import { AuthTopBar } from '../AccountMenu'
 import { WizardBackdrop } from '../AuthBackdrop'
 import ScrollEdgeEffect from '../ScrollEdgeEffect'
-import { authLink, useAuthBackLink, useAuthNavigate } from './wizardNav'
+import { REGISTER_TYPE_CLASS, RegisterType } from './registerType'
+import {
+  GateProvider,
+  authLink,
+  useAuthBackLink,
+  useAuthNavigate,
+  useGateValidate,
+} from './wizardNav'
 
 export const TOTAL_STEPS = 5
+
+/**
+ * THE CARD'S INSET, and the one number this whole file now hangs off.
+ *
+ * 20 @402 → 24 @1440, where this was 20 → 40. The 40 came from the OLD desktop frames
+ * (`708:1279` and friends); every frame of the current redesign says 24 on all four sides —
+ * `2053:138` (terms), `2053:247` (team), `2053:348` (advisor), `2053:528` (entrant 1),
+ * `2053:724` (entrant 2) are each `padding: 24` on a 1040 card, which is what makes the
+ * content column 992 rather than the 960 it was rendering.
+ *
+ * The one dissenter is `2053:1044` (the "Modal" frame), which still carries the old
+ * 40/40/40/160 — it is a stale clone of the pre-redesign card and the only 2053 node that
+ * disagrees with the other five. Five to one, and the five are the step frames the user
+ * named, so 24 it is.
+ *
+ * The ACTION BAR uses the same expression, and that is the point of extracting it. Figma
+ * pins ถัดไป on the card's own inset — `2053:209` ends at x1216 of a card that ends at 1240,
+ * and `2053:314` / `2053:494` / `2053:686` do the same — i.e. the pill is inset EXACTLY as
+ * far as the content above it. The old bar cancelled the card's padding with a negative
+ * margin and then re-applied a flat 20 of its own, so the pill sat 20 from the frame while
+ * the fields sat 40 from it: the button visibly broke out of the column and hugged the
+ * edge. One value, spent once, and the two cannot drift.
+ *
+ * It is an inline `style` and not a Tailwind arbitrary value BECAUSE it is shared. Tailwind
+ * scans source text for literal class names, so `p-[${CARD_PAD}]` would never be emitted —
+ * the only way to spend one expression in two places is to hand it to the style attribute.
+ */
+const CARD_PAD = 'calc(19.896px + 4.104*var(--fl))'
+
+/**
+ * The card's corner radius, and the action bar's bottom two, spent from ONE constant so they
+ * cannot disagree. `2053:138` / `2053:247` / `2053:348` / `2053:528` are `cornerRadius: 24`;
+ * `2053:208` / `2053:309` / `2053:489` are `rectangleCornerRadii: [0, 0, 24, 24]` — the bar is
+ * square where it meets the form above it and takes the card's own radius where it meets the
+ * fold. The bar is a full-bleed opaque plate again (it has to be, now that the form scrolls
+ * underneath it), so those two corners are real geometry rather than decoration: at anything
+ * other than the card's 24 they cut a visible notch out of the card's bottom corners.
+ */
+const CARD_RADIUS = '24px'
 
 /**
  * Reordered per Figma `2053:108`/`2053:217`/`2053:318`/`2053:498`/`2053:694`: เงื่อนไข is now
@@ -60,8 +106,20 @@ export default function WizardShell({
      * container that a touch drag can still pan sideways. `clip` creates no scrollport,
      * and unlike a transform it does not become a containing block for the overlay's
      * `fixed` scrim.
+     *
+     * `h-dvh` and no longer `min-h-dvh`, which is what pins the action bar. A card that is
+     * allowed to grow past the fold hands its scrolling to the DOCUMENT, and the bar — the
+     * card's last child — then sits at the bottom of the CONTENT rather than the bottom of the
+     * screen: on the entrant step that is 1900px down, so ย้อนกลับ and ถัดไป were unreachable
+     * without scrolling the whole form first. Bounding the shell to the viewport is what lets
+     * the form scroll inside the card instead, exactly the arrangement `/register` already
+     * has, and the card then lands on Figma's own height at both anchors for free —
+     * 1024 − 60 − 92 − 40 = 832 (`2053:138`) and 874 − 24 − 80 − 24 − 24 = 722 (`1214:142`).
      */
-    <div className="relative flex min-h-dvh flex-col overflow-clip bg-[#fefdfc]">
+    <div
+      className={`relative flex h-dvh flex-col overflow-clip bg-[#fefdfc] ${REGISTER_TYPE_CLASS}`}
+    >
+      <RegisterType />
       <WizardBackdrop withTomatoes={withTomatoes} />
 
       {/*
@@ -84,7 +142,10 @@ export default function WizardShell({
        */}
       <div
         data-recede={receded}
-        className="auth-recede relative z-10 mx-auto flex w-full max-w-[1088px] flex-1 flex-col gap-[calc(23.584px_+_16.416*var(--fl))] px-6 pt-[calc(23.06px_+_36.94*var(--fl))] pb-[calc(24.624px_-_24.624*var(--fl))]"
+        /* `min-h-0` so this column can actually be told to shrink — a flex item's `min-height`
+           is `auto`, which would let the card size itself to its content and push the whole
+           arrangement straight back to a scrolling document. */
+        className="auth-recede relative z-10 mx-auto flex w-full max-w-[1088px] min-h-0 flex-1 flex-col gap-[calc(23.584px_+_16.416*var(--fl))] px-6 pt-[calc(23.06px_+_36.94*var(--fl))] pb-[calc(24.624px_-_24.624*var(--fl))]"
       >
         {/*
          * `auth-topbar` / `wizard-progress` / `wizard-body` are view-transition names
@@ -107,11 +168,6 @@ export default function WizardShell({
         <AuthTopBar className="auth-topbar" />
 
         {/*
-         * The card's bottom padding is 0 because the action bar supplies it: Figma pins
-         * that bar to the card's bottom edge on its own 20 inset, so it cancels the
-         * card's 40 side padding and stays 20 below the content.
-         */}
-        {/*
          * `auth-sheet` is the one white plate that runs the whole flow: it is the gate's
          * requirements card before this and the success/error card after it, so the plate
          * persists across every hop and only its contents change. Between steps its box
@@ -119,123 +175,187 @@ export default function WizardShell({
          * to the new step's height without hanging out of a plate still resizing.
          */}
         {/*
-         * PADDING 20 @402 → 40 @1440, where this was 24 → 40. The old note cited `1297:1463`
-         * for the 24 and `1297:1463` is in fact 20 — as is every other phone card in the flow:
-         * `1214:187` (team), `1236:582` (advisor), `1243:1352` (entrant), `1243:2191` (terms).
-         * All five say 20; `708:1279` / `708:1374` / `708:1564` / `708:1976` all say 40. The
-         * action bar's own negative margin below is the same expression so the two cannot drift.
+         * PADDING is `CARD_PAD` — see its note. It is now a real four-sided inset rather than
+         * `p-… pb-0`: the bottom used to be handed to the action bar, which is exactly how the
+         * pill ended up on a different inset from the fields.
          *
          * RADIUS is a flat 24 and that is not a held 1440 value — the five phone cards and the
-         * four desktop ones are all `cornerRadius: 24`. (The phone PAGE frame `1214:157` and its
+         * five desktop ones are all `cornerRadius: 24`. (The phone PAGE frame `1214:157` and its
          * top bar `1214:177` are 20, which is what the ramp on `AuthTopBar`'s plate is for; the
          * form card is not.)
          *
          * GAP was `gap-6 lg:gap-10` — the two anchors held flat with a step at 1024, i.e. a hole
          * in the tablet band of exactly the kind the gutter note above describes. Both ends are
-         * measured (24 on all five phone cards, 40 on all four desktop ones), so it ramps.
+         * measured (24 on all five phone cards, 40 on all five desktop ones — `2053:138`'s own
+         * `itemSpacing` is 40), so it ramps.
          */}
-        <div className="auth-sheet flex flex-1 flex-col rounded-[24px] bg-white p-[calc(19.48px_+_20.52*var(--fl))] pb-0 shadow-soft lg:min-h-[832px] lg:pb-0">
-          <div className="flex flex-1 flex-col gap-[calc(23.584px_+_16.416*var(--fl))]">
-            {/* title and crumbs sit flush in Figma — no gap between them */}
-            <div className="flex flex-col items-start">
-              {/* 24 @402 → 32 @1440, and SemiBold at both ends. Verified on all four steps at
+        {/*
+         * The gate wraps the CARD rather than the page, so `children` and `actions` share one
+         * registry: the controls inside the form declare what they still need and the pills in
+         * the bar below read it. `actions` is created by the step, outside this element, but it
+         * is RENDERED inside it — which is all context requires.
+         */}
+        <GateProvider>
+          <div
+            /* `min-h-0` and no `lg:min-h-[832px]` any more: the card is handed whatever height
+               the shell has left and never asks for more, so the document never scrolls on a
+               wizard route and the bar below stays on the fold. The 832 floor is not missed —
+               at 1440x1024 the arithmetic in the root's note lands on exactly 832 anyway. */
+            className="auth-sheet flex min-h-0 flex-1 flex-col bg-white shadow-soft"
+            style={{ padding: CARD_PAD, borderRadius: CARD_RADIUS }}
+          >
+            <div className="flex min-h-0 flex-1 flex-col gap-[calc(23.584px_+_16.416*var(--fl))]">
+              {/* title and crumbs sit flush in Figma — no gap between them */}
+              <div className="flex shrink-0 flex-col items-start">
+                {/* 24 @402 → 32 @1440, and SemiBold at both ends. Verified on all four steps at
                   both anchors: `1214:189` / `1236:584` / `1243:1354` / `1243:2193` are 24/600 on
                   a 34-tall box at 1.4, `708:1281` / `708:1376` / `708:1566` / `708:1978` are
                   32/600 on 45. Nothing to change — recorded because the earlier pass set this
                   before the rate limit and it was carried as unconfirmed. */}
-              <h1 className="text-[calc(23.792px_+_8.208*var(--fl))] leading-[1.4] font-semibold">
-                ลงทะเบียนเข้าแข่งขัน
-              </h1>
+                <h1 className="text-[length:var(--t-24-32)] leading-[1.4] font-semibold">
+                  ลงทะเบียนเข้าแข่งขัน
+                </h1>
+                {/*
+                 * 14 @402 → 18 @1440, where this was `fl-18` — whose floor is 16, so the phone
+                 * crumb rendered 2px over Figma. The 21-tall box the old note read as a 16 is
+                 * 14 at Noto Sans Thai's own 1.5107 leading (21.15 / 14), not 16 at 1.3.
+                 *
+                 * Measured on all four steps at both anchors: `1214:191`…`1214:197`,
+                 * `1236:586`…`1236:592`, `1243:1356`…`1243:1362`, `1243:2195`…`1243:2201` are all
+                 * 14/400/21.15; `708:1283`…`708:1289`, `708:1378`…`708:1384`, `708:1568`…`708:1574`,
+                 * `708:1980`…`708:1986` are all 18/400/27.2. Weight is Regular at BOTH anchors, so
+                 * the absent weight class is the right answer and not an omission.
+                 *
+                 * `gap-2` stays flat: `1214:190` and `708:1282` are both 8.
+                 */}
+                <nav
+                  aria-label="ขั้นตอน"
+                  className="flex flex-wrap items-start gap-2 text-[length:var(--t-14-18)] leading-[normal]"
+                >
+                  {CRUMBS.map((crumb, i) => (
+                    <span key={crumb} className="flex gap-2">
+                      <span className={i <= activeCrumb ? 'text-ink' : 'text-gray-2'}>{crumb}</span>
+                      {i < CRUMBS.length - 1 && <span className="text-gray-2">&gt;</span>}
+                    </span>
+                  ))}
+                </nav>
+              </div>
+
               {/*
-               * 14 @402 → 18 @1440, where this was `fl-18` — whose floor is 16, so the phone
-               * crumb rendered 2px over Figma. The 21-tall box the old note read as a 16 is
-               * 14 at Noto Sans Thai's own 1.5107 leading (21.15 / 14), not 16 at 1.3.
-               *
-               * Measured on all four steps at both anchors: `1214:191`…`1214:197`,
-               * `1236:586`…`1236:592`, `1243:1356`…`1243:1362`, `1243:2195`…`1243:2201` are all
-               * 14/400/21.15; `708:1283`…`708:1289`, `708:1378`…`708:1384`, `708:1568`…`708:1574`,
-               * `708:1980`…`708:1986` are all 18/400/27.2. Weight is Regular at BOTH anchors, so
-               * the absent weight class is the right answer and not an omission.
-               *
-               * `gap-2` stays flat: `1214:190` and `708:1282` are both 8.
+               * 6 tall on the 402 frames, 8 at 1440 — `h-2` was the 1440 value held flat.
+               * CONFIRMED on all four steps at both anchors: `1243:2154` (team), `1243:2147`
+               * (advisor), `1243:2140` (entrant), `1243:2202` (terms) are each 314x6 with `gap: 4`
+               * and `cornerRadius: 100`; `708:1290` / `708:1385` / `708:1575` / `708:1987` are each
+               * 960x8 with the same 4 and 100. So the height ramps and the gap and radius do not —
+               * `gap-1` and `rounded-[100px]` are both anchors, not one held flat. Segment fills
+               * are #e6e6e6 empty / #c0563e filled, and each segment is fully rounded.
                */}
-              <nav
-                aria-label="ขั้นตอน"
-                className="flex flex-wrap items-start gap-2 text-[calc(13.896px_+_4.104*var(--fl))] leading-[normal]"
+              <div
+                className="wizard-progress flex h-[calc(5.948px_+_2.052*var(--fl))] gap-1 overflow-hidden rounded-[100px]"
+                role="progressbar"
+                aria-valuenow={step}
+                aria-valuemin={1}
+                aria-valuemax={TOTAL_STEPS}
+                aria-label={`ขั้นตอนที่ ${step} จาก ${TOTAL_STEPS}`}
               >
-                {CRUMBS.map((crumb, i) => (
-                  <span key={crumb} className="flex gap-2">
-                    <span className={i <= activeCrumb ? 'text-ink' : 'text-gray-2'}>{crumb}</span>
-                    {i < CRUMBS.length - 1 && <span className="text-gray-2">&gt;</span>}
-                  </span>
+                {Array.from({ length: TOTAL_STEPS }, (_, i) => (
+                  /*
+                   * The segment this step just reached sweeps in from its left edge instead of
+                   * already being filled — the beat that tells the user the step counted.
+                   *
+                   * `key={i}`, deliberately, where it used to churn the active segment's key to
+                   * force a keyframe to replay. That replay was the bug: ถัดไป and ย้อนกลับ are
+                   * adjacent, and a double-tap restarted the sweep from zero while the segment
+                   * that was mid-sweep snapped to full. `data-filled` drives a *transition*
+                   * instead (see `.wizard-progress-fill` in auth-motion.css), which retargets
+                   * from wherever the fill currently is; `data-sweep` marks the one segment that
+                   * should still draw itself on from empty when the whole bar is freshly mounted,
+                   * which is every hop that crosses a route boundary.
+                   */
+                  <span
+                    key={i}
+                    data-filled={i < step}
+                    data-sweep={i === step - 1}
+                    className="wizard-progress-fill h-full flex-1 rounded-full bg-[#e6e6e6]"
+                  />
                 ))}
-              </nav>
+              </div>
+
+              {/*
+               * THE SCROLLPORT. The form scrolls here and the document does not, which is what
+               * keeps the action bar below on the fold — the same contract `/register`'s
+               * requirement list already runs under. `min-h-0` is the load-bearing half: a flex
+               * item's automatic minimum size is its content's, so without it this box refuses
+               * to shrink and the card grows past the viewport again.
+               *
+               * Both axes are named because naming only one is what hands a page a sideways
+               * pan: `overflow-y-auto` alone leaves `overflow-x` computing to `auto`.
+               * `overscroll-contain` stops a flick that runs out of form from chaining to
+               * whatever is behind it.
+               *
+               * The `-mx`/`px` pair is not decoration. A scrollport clips at its own edges, and
+               * every control in here draws a 3px focus ring outside its border box — flush
+               * against the port those rings were being sliced down the left and right. Pulling
+               * the box out over the card's padding and putting the same value back as padding
+               * leaves the content on exactly the inset it had, with room for the ring to show.
+               */}
+              <div
+                className="wizard-body flex min-h-0 flex-1 flex-col overflow-x-clip overflow-y-auto overscroll-contain"
+                style={{
+                  marginInline: `calc(-1 * ${CARD_PAD})`,
+                  paddingInline: CARD_PAD,
+                }}
+              >
+                {children}
+              </div>
             </div>
 
             {/*
-             * 6 tall on the 402 frames, 8 at 1440 — `h-2` was the 1440 value held flat.
-             * CONFIRMED on all four steps at both anchors: `1243:2154` (team), `1243:2147`
-             * (advisor), `1243:2140` (entrant), `1243:2202` (terms) are each 314x6 with `gap: 4`
-             * and `cornerRadius: 100`; `708:1290` / `708:1385` / `708:1575` / `708:1987` are each
-             * 960x8 with the same 4 and 100. So the height ramps and the gap and radius do not —
-             * `gap-1` and `rounded-[100px]` are both anchors, not one held flat. Segment fills
-             * are #e6e6e6 empty / #c0563e filled, and each segment is fully rounded.
+             * THE ACTION BAR, pinned to the fold.
+             *
+             * `shrink-0` after a `flex-1` scrollport is the whole mechanism: the form above
+             * takes the space that is left and this row keeps its natural height at the bottom
+             * of the card, at every step and every scroll position. Nothing is `sticky` or
+             * `fixed` — a sticky bar would still be inside the scroller and would need its own
+             * stacking and inset rules, where this is simply the last row of a column that
+             * cannot overflow.
+             *
+             * It is FULL BLEED and opaque, which it has to be now: the form slides underneath
+             * it, so a transparent bar or one inset by the card's padding would let fields show
+             * through beside and behind the pills. `-mx`/`-mb` of `CARD_PAD` take it out to the
+             * card's three edges, and the same `CARD_PAD` back as padding puts the pills on
+             * exactly the inset the form column above them uses — which is Figma's own reading:
+             * `2053:209` ends 24 from a card that ends at 1240, `2053:314` / `2053:494` /
+             * `2053:686` likewise. One value, spent once, so the two cannot drift.
+             *
+             * The bottom corners are `CARD_RADIUS`, from the same constant the card's own
+             * radius comes from — `2053:208` is `[0, 0, 24, 24]` against the card's 24. Square
+             * at the top, where it meets the form; the card's curve at the bottom, where it
+             * meets the fold.
+             *
+             * NO rule along its top edge, deliberately. Figma draws none (`2053:208` has a fill
+             * and no stroke), and a border here is exactly the stray divider this pass was sent
+             * to remove.
+             *
+             * `flex-wrap` is a safety net, not a layout: at 375 the terms step's pair is a 24px
+             * icon plus "ลงทะเบียนเข้าแข่งขัน", which is within a few px of the 293 this row has,
+             * and a wrap is a far better failure than a pill hanging out of the card.
              */}
             <div
-              className="wizard-progress flex h-[calc(5.948px_+_2.052*var(--fl))] gap-1 overflow-hidden rounded-[100px]"
-              role="progressbar"
-              aria-valuenow={step}
-              aria-valuemin={1}
-              aria-valuemax={TOTAL_STEPS}
-              aria-label={`ขั้นตอนที่ ${step} จาก ${TOTAL_STEPS}`}
+              className="flex shrink-0 flex-wrap items-center justify-between gap-4 bg-white"
+              style={{
+                marginInline: `calc(-1 * ${CARD_PAD})`,
+                marginBottom: `calc(-1 * ${CARD_PAD})`,
+                marginTop: CARD_PAD,
+                padding: CARD_PAD,
+                borderBottomLeftRadius: CARD_RADIUS,
+                borderBottomRightRadius: CARD_RADIUS,
+              }}
             >
-              {Array.from({ length: TOTAL_STEPS }, (_, i) => (
-                /*
-                 * The segment this step just reached sweeps in from its left edge instead of
-                 * already being filled — the beat that tells the user the step counted.
-                 *
-                 * `key={i}`, deliberately, where it used to churn the active segment's key to
-                 * force a keyframe to replay. That replay was the bug: ถัดไป and ย้อนกลับ are
-                 * adjacent, and a double-tap restarted the sweep from zero while the segment
-                 * that was mid-sweep snapped to full. `data-filled` drives a *transition*
-                 * instead (see `.wizard-progress-fill` in auth-motion.css), which retargets
-                 * from wherever the fill currently is; `data-sweep` marks the one segment that
-                 * should still draw itself on from empty when the whole bar is freshly mounted,
-                 * which is every hop that crosses a route boundary.
-                 */
-                <span
-                  key={i}
-                  data-filled={i < step}
-                  data-sweep={i === step - 1}
-                  className="wizard-progress-fill h-full flex-1 rounded-full bg-[#e6e6e6]"
-                />
-              ))}
+              {actions}
             </div>
-
-            <div className="wizard-body flex flex-1 flex-col">{children}</div>
           </div>
-
-          {/*
-           * The bar cancels the card's side padding to sit on Figma's own 20 inset, so its
-           * negative margin has to BE the card's padding ramp rather than a `-mx-6 lg:-mx-10`
-           * pair that only agreed with it at two widths. Written as a negative inside the
-           * calc() rather than as Tailwind's `-mx-[…]` so the sign is in the value.
-           *
-           * `flex-wrap` is a safety net, not a layout: at 375 the terms step's pair is a 24px
-           * icon plus "ลงทะเบียนเข้าแข่งขัน", which is within a few px of the 293 this row has,
-           * and a wrap is a far better failure than a pill hanging out of the card.
-           */}
-          {/*
-           * The bar's OWN padding is a flat 20, not a 16 → 20 ramp: `1214:249` (team),
-           * `1297:103` (advisor), `1297:93` (entrant) and `1243:2371` (terms) all inset by 20 on
-           * the 402 frame, exactly as `708:1341` / `708:1527` / `708:1733` / `708:2011` do at
-           * 1440. The arithmetic confirms it twice over — the phone bar is 76 tall around a
-           * 36-tall pill (20 + 36 + 20) and the desktop bar 100 around a 60 (20 + 60 + 20).
-           */}
-          <div className="mt-5 mx-[calc(-19.48px_-_20.52*var(--fl))] flex flex-wrap items-center justify-between gap-4 rounded-b-[24px] bg-white p-5">
-            {actions}
-          </div>
-        </div>
+        </GateProvider>
       </div>
 
       {/*
@@ -301,8 +421,10 @@ export default function WizardShell({
  *
  * RADIUS is a flat 12 and that is both anchors, not one held: every pill above is `r: 12`.
  */
-const STEP_BUTTON =
-  'mm-press flex items-center justify-center gap-[calc(7.896px_+_4.104*var(--fl))] rounded-[12px] bg-brand-red py-[calc(7.792px_+_8.208*var(--fl))] text-[calc(15.896px_+_4.104*var(--fl))] leading-[1.4] font-medium text-white transition-opacity hover:opacity-90'
+const STEP_BUTTON_BASE =
+  'flex items-center justify-center gap-[calc(7.896px_+_4.104*var(--fl))] rounded-[12px] bg-brand-red py-[calc(7.792px_+_8.208*var(--fl))] text-[length:var(--t-16-20)] leading-[1.4] font-medium text-white transition-opacity'
+
+const STEP_BUTTON = `mm-press ${STEP_BUTTON_BASE} hover:opacity-90`
 
 /**
  * The arrow the two navigation pills carry: 20 on the 402 frames (`1297:1569` back,
@@ -362,11 +484,25 @@ export function BackButton({ to }: { to: string }) {
   )
 }
 
+/**
+ * The pill is a normal, live `<Link>` at all times — pressing it is what RUNS the check.
+ *
+ * `validate()` returns false when something on the step is outstanding, and having already
+ * sent the reader to the offending field it cancels the navigation here. Nothing about the
+ * control's appearance changes: a step is not "broken" before you have tried it, and dimming
+ * ถัดไป from the moment the form loads only tells someone that something, somewhere, is not
+ * done. The refusal is spent where the problem is instead.
+ */
 export function NextButton({ to, label = 'ถัดไป' }: { to: string; label?: string }) {
+  const validate = useGateValidate()
+
   return (
     <Link
       {...authLink(to, 'forward')}
       aria-label={label}
+      onClick={(e) => {
+        if (!validate()) e.preventDefault()
+      }}
       className={`${STEP_BUTTON} ${STEP_PAD} ml-auto sm:pr-4 sm:pl-6`}
     >
       <span className={STEP_GLYPH}>{label}</span>
@@ -399,13 +535,17 @@ export function NextButton({ to, label = 'ถัดไป' }: { to: string; labe
 export function SubmitButton({ to, label }: { to: string; label: string }) {
   const go = useAuthNavigate()
   const [busy, setBusy] = useState(false)
+  const validate = useGateValidate()
 
   return (
     <button
       type="button"
       data-busy={busy}
       aria-busy={busy}
+      /* the commit runs the same pass ถัดไป does — this is the one press in the flow that
+         must never fire on an incomplete form, and `busy` must not latch on a refusal */
       onClick={() => {
+        if (!validate()) return
         setBusy(true)
         go(to, 'submit')
       }}

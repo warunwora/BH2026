@@ -42,9 +42,37 @@ export default function Home() {
      *
      * From 1440 the OLD pair is restored verbatim — `pb-0` plus the 5178 floor — so the
      * desktop render this was verified against does not move by a pixel, and 1439 lands
-     * within 1.4px of it. Below 431 the tail stays 17.5vw: that range is Figma's own 402
-     * frame (1190:558), whose prizes section ends at 4573 against a footer at 4637, and
-     * `sec-prizes`' phone bottom padding is already carrying most of that 64.
+     * within 1.4px of it.
+     *
+     * ------------------------------------------------- the phone tail is 227px, and FIXED
+     *
+     * Below 431 the tail was 17.5vw, derived from a reading of the 402 frame (1190:558) that
+     * put its prizes section's end at 4573 against a footer at **4637** — a 64px band, of
+     * which `sec-prizes`' phone bottom padding was said to carry most. Both halves of that are
+     * now wrong, and the visible symptom was the whole closing composition going missing on
+     * the phone: no white band, no strand fan, no pale ellipse under the cheese, the cheese
+     * sitting straight on flat red.
+     *
+     *   - Re-read off REST, `1190:831` starts at **4800**, not 4637. Figma's band is
+     *     4800 − 4573 = **227**, not 64. (The same stale 4637→4726→4800 drift is what
+     *     MobileHomeBackground's `F.footer.top` was carrying; both are corrected together and
+     *     neither is meaningful without the other.)
+     *   - `sec-prizes`' phone bottom padding measures **0** from 320 to 402 and 7.5 at 430, so
+     *     it carries none of it. The whole band is this one declaration.
+     *
+     * Measured, the band it produced was 56 / 63 / 65.6 / 68.3 / 70.4 / 75.3 at
+     * 320/360/375/390/402/430 against Figma's 227. The red blob is 787 tall pinned 69 above
+     * the section top, so its wavy bottom edge lands 67px below the section — with only 70px
+     * of band the curve had 3px of white under it and the red read as a flat cut into the
+     * footer. At 227 the blob ends 160 above the footer against Figma's own 158, so the curve
+     * and the white band under it are back.
+     *
+     * FIXED px, not vw, and that is the point: the phone canvas is Figma's 402 frame drawn 1:1
+     * and never scaled (see the long note at the top of MobileHomeBackground), so the fan and
+     * the cheese hung off this box's bottom edge are fixed-size objects. A vw tail moves the
+     * ground out from under them at every width but 402. 227px holds the composition across
+     * the whole 320-430 range, and what a narrow phone loses is the fan's own left bleed,
+     * which runs to x −122 and was never on screen.
      */
     /*
      * `overflow-x-clip` and not `overflow-x-hidden`, and here rather than only on <html>.
@@ -65,12 +93,11 @@ export default function Home() {
     /*
      * The tail is padding HERE rather than a margin on Prizes: the canvas is `inset-0` on this
      * box, and a child's bottom margin falls outside it, so the band's bottom edge stopped at
-     * the last section instead of at the footer and the gap rendered plain white. 17.5vw is
-     * 251.5/1440, the distance from the red blob's bottom to the Figma frame's bottom edge —
-     * enough for the strands alone, which is all the 402 frame asks for. 33.889vw adds the
-     * 236.5 of blob that has to sit below the section as well; see the note above.
+     * the last section instead of at the footer and the gap rendered plain white. 33.889vw is
+     * the 236.5 of blob that has to sit below the section plus the 251.5 of strands and cheese
+     * below the blob; see the note above. The phone's own 227px is derived there too.
      */
-    <div className="relative isolate overflow-x-clip pb-[17.5vw] min-[431px]:pb-[33.889vw] min-[1440px]:pb-0 min-[1440px]:min-h-[5178px]">
+    <div className="relative isolate overflow-x-clip pb-[227px] min-[431px]:pb-[33.889vw] min-[1440px]:pb-0 min-[1440px]:min-h-[5178px]">
       <HomeBackground />
       <Hero />
       <Calendar />

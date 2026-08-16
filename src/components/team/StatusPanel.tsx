@@ -8,6 +8,7 @@ import {
   type StepTone,
   type TeamStatus,
 } from '../../teamData'
+import '../../styles/status-motion.css'
 
 /**
  * ── Size ramps, both anchors measured ──────────────────────────────────────────────────────
@@ -200,9 +201,17 @@ function Badge({ tone, compact = false }: { tone: StepTone; compact?: boolean })
     <span
       className={`flex shrink-0 items-center justify-center ${compact ? 'h-[32px] w-[36px]' : 'size-[32px]'}`}
     >
+      {/*
+       * `status-ring` only on `pending`, which is the "กำลังตรวจสอบ" tone — the one status that
+       * is genuinely still in flight, and so the one place a perpetual animation tells the truth
+       * rather than decorating. Every other tone is terminal and stays still. The rings are drawn
+       * by the class's own pseudo-elements (styles/status-motion.css), so no extra DOM.
+       */}
       <span
         data-on={done}
-        className={`mm-swap shrink-0 rounded-full p-[6px] transition-[background-color,box-shadow] ${skin}`}
+        className={`mm-swap shrink-0 rounded-full p-[6px] transition-[background-color,box-shadow] ${skin} ${
+          tone === 'pending' ? 'status-ring' : ''
+        }`}
       >
         {/* Both layers share the same box so the pill's diameter cannot change under the
             cross-fade. A compact badge is only ever `failed`, which is terminal — it never
@@ -239,7 +248,7 @@ function Row({ title, label, tone }: { title: string; label: string; tone: StepT
 function Step({ step, rise }: { step: StatusStep; rise: number }) {
   return (
     <div
-      className="auth-rise auth-rise-sm flex w-full flex-col gap-[12px] rounded-[12px] p-[10px] shadow-[inset_0_0_0_0.5px_#dcdcdc]"
+      className="status-step auth-rise auth-rise-sm flex w-full flex-col gap-[12px] rounded-[12px] p-[10px] shadow-[inset_0_0_0_0.5px_#dcdcdc]"
       data-rise={rise}
     >
       <div className={`flex gap-[12px] ${step.rows ? 'items-start' : 'items-center'}`}>

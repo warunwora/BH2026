@@ -1,7 +1,11 @@
 import { useParams } from 'react-router-dom'
-import WizardShell, { BackButton, NextButton, SubmitButton } from '../../components/form/WizardShell'
+import WizardShell, {
+  BackButton,
+  NextButton,
+  SubmitButton,
+} from '../../components/form/WizardShell'
 import { DocumentRow, Separator } from '../../components/form/Field'
-import PersonFields, { ContactFields } from './PersonFields'
+import PersonFields, { ContactFields, ENTRANT_NAMES } from './PersonFields'
 import { STUDENT_DOCUMENTS } from '../../registrationData'
 
 /**
@@ -42,7 +46,7 @@ export default function EntrantStep() {
               `1243:1371` is 20/500 on a 28-tall box at 1.4, where the wizard's page title beside
               it (`1243:1354`) is 24/600 on 34; `708:1583` is 28/500 on 39. CONFIRMED — size and
               weight were both already right. */}
-          <h2 className="w-full text-[calc(19.792px_+_8.208*var(--fl))] leading-[1.4] font-medium">
+          <h2 className="w-full text-[length:var(--t-20-28)] leading-[1.4] font-medium">
             เอกสารสำหรับผู้เข้าแข่งขันคนที่ {n}
           </h2>
           {/* 16 @402 → 24 @1440 between rows, the same split AdvisorStep hits: the three rows are
@@ -50,13 +54,20 @@ export default function EntrantStep() {
               `1243:1732` on 24 at 1440. `gap-6` was the 1440 figure held flat. */}
           <div className="flex w-full flex-col items-start gap-[calc(15.792px_+_8.208*var(--fl))]">
             {STUDENT_DOCUMENTS.map((doc, i) => (
-              <DocumentRow key={doc} index={i + 1} text={doc} />
+              <DocumentRow key={doc.text} index={i + 1} {...doc} />
             ))}
           </div>
         </section>
 
         <Separator />
-        <PersonFields title={`ข้อมูลผู้เข้าแข่งขันคนที่ ${n}`} withBirthDate />
+        {/* `names` because the two steps disagree on the given-name placeholders: the entrant is
+            `มดแฮก` / `Modhack` (`2053:596` / `2053:617`) where the advisor is `นพนภา` / `Nopnapa`.
+            The surnames match, so only the pair that differs is passed — see PersonFields. */}
+        <PersonFields
+          title={`ข้อมูลผู้เข้าแข่งขันคนที่ ${n}`}
+          withBirthDate
+          names={ENTRANT_NAMES}
+        />
         <Separator />
         <ContactFields />
       </div>
